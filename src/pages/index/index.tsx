@@ -6,9 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Users, Plus, Clock, User, LogIn, Pencil, QrCode } from 'lucide-react-taro'
+import { Users, Plus, Clock, User, LogIn, Pencil, Copy } from 'lucide-react-taro'
 import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName } from '@/lib/storage'
-import LinkModal from '@/components/link-modal'
 
 interface RoomPreview {
   id: string
@@ -24,8 +23,6 @@ export default function Index() {
   const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
-  const [showQRModal, setShowQRModal] = useState(false)
-  const [currentQRRoom, setCurrentQRRoom] = useState<RoomPreview | null>(null)
   
   useEffect(() => {
     loadData()
@@ -88,9 +85,15 @@ export default function Index() {
     Taro.navigateTo({ url: `/pages/room/index?id=${roomId}` })
   }
   
-  const handleShowQRCode = (room: RoomPreview) => {
-    setCurrentQRRoom(room)
-    setShowQRModal(true)
+  const handleCopyRoomLink = (roomId: string, e: any) => {
+    e.stopPropagation()
+    const link = `/pages/room/index?id=${roomId}`
+    Taro.setClipboardData({
+      data: link,
+      success: () => {
+        Taro.showToast({ title: '链接已复制', icon: 'success' })
+      }
+    })
   }
   
   const refreshRooms = () => {
@@ -240,10 +243,10 @@ export default function Index() {
                         size="sm" 
                         variant="outline" 
                         className="w-full border-red-200 text-red-700 rounded-lg h-8"
-                        onClick={() => handleShowQRCode(room)}
+                        onClick={(e: any) => handleCopyRoomLink(room.id, e)}
                       >
-                        <QrCode size={12} color="#B91C1C" />
-                        <Text className="text-red-700 ml-1 text-xs">邀请链接</Text>
+                        <Copy size={12} color="#B91C1C" />
+                        <Text className="text-red-700 ml-1 text-xs">复制链接</Text>
                       </Button>
                     </View>
                     <View className="flex-1">
@@ -313,14 +316,6 @@ export default function Index() {
           </View>
         </View>
       )}
-      
-      {/* 邀请链接弹窗 */}
-      <LinkModal
-        show={showQRModal}
-        roomId={currentQRRoom?.id || ''}
-        roomName={currentQRRoom?.location}
-        onClose={() => setShowQRModal(false)}
-      />
     </View>
   )
 }
