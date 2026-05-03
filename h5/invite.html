@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>麻将约局</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#B91C1C',
+            gold: '#D4AF37',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-stone-900 to-stone-800 min-h-screen">
+  <div id="app" class="max-w-lg mx-auto px-4 py-8">
+    <!-- 加载中 -->
+    <div id="loading" class="flex flex-col items-center justify-center min-h-screen">
+      <div class="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-white mt-4">加载中...</p>
+    </div>
+    
+    <!-- 房间不存在 -->
+    <div id="notFound" class="hidden flex flex-col items-center justify-center min-h-screen">
+      <div class="text-6xl mb-4">🀄</div>
+      <h2 class="text-2xl font-bold text-white mb-2">房间不存在</h2>
+      <p class="text-gray-400 mb-6">该房间可能已过期或已解散</p>
+      <a href="/" class="bg-primary text-white px-8 py-3 rounded-xl font-medium">返回首页</a>
+    </div>
+    
+    <!-- 房间详情 -->
+    <div id="roomDetail" class="hidden">
+      <!-- 头部 -->
+      <div class="text-center mb-8">
+        <div class="text-5xl mb-2">🀄</div>
+        <h1 class="text-2xl font-bold text-gold">麻将约局</h1>
+      </div>
+      
+      <!-- 房间信息卡片 -->
+      <div class="bg-stone-800 rounded-2xl p-6 mb-6">
+        <div class="text-center mb-6">
+          <p class="text-gray-400 text-sm mb-1">房间号</p>
+          <p id="roomCode" class="text-4xl font-bold text-gold tracking-widest">------</p>
+        </div>
+        
+        <div class="space-y-4">
+          <div class="flex items-center">
+            <span class="text-2xl mr-3">📍</span>
+            <div>
+              <p class="text-gray-400 text-xs">约局地点</p>
+              <p id="location" class="text-white">-</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center">
+            <span class="text-2xl mr-3">🕐</span>
+            <div>
+              <p class="text-gray-400 text-xs">开始时间</p>
+              <p id="startTime" class="text-white">-</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center" id="endTimeContainer">
+            <span class="text-2xl mr-3">🏁</span>
+            <div>
+              <p class="text-gray-400 text-xs">结束时间</p>
+              <p id="endTime" class="text-white">-</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center">
+            <span class="text-2xl mr-3">👥</span>
+            <div>
+              <p class="text-gray-400 text-xs">已加入人数</p>
+              <p class="text-white"><span id="memberCount">0</span> / 4 人</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 成员列表 -->
+      <div class="bg-stone-800 rounded-2xl p-6 mb-6">
+        <h3 class="text-gold font-medium mb-4">已加入成员</h3>
+        <div id="members" class="space-y-3">
+          <!-- 动态渲染 -->
+        </div>
+      </div>
+      
+      <!-- 操作按钮 -->
+      <div id="actions" class="space-y-3">
+        <!-- 加入按钮 -->
+        <button id="joinBtn" onclick="joinRoom()" class="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg">
+          加入约局
+        </button>
+        
+        <!-- 拒绝按钮 -->
+        <button onclick="declineRoom()" class="w-full bg-stone-700 text-white py-3 rounded-xl font-medium">
+          稍后再说
+        </button>
+      </div>
+      
+      <!-- 已满提示 -->
+      <div id="fullHint" class="hidden text-center py-4">
+        <p class="text-yellow-500">⚠️ 房间人数已满，无法加入</p>
+      </div>
+      
+      <!-- 已在房间提示 -->
+      <div id="alreadyJoined" class="hidden text-center py-4">
+        <p class="text-green-500">✓ 您已在此房间</p>
+      </div>
+      
+      <!-- 提示信息 -->
+      <div id="toast" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-stone-700 text-white px-6 py-3 rounded-xl z-50"></div>
+    </div>
+  </div>
+  
+  <script>
+    // 获取 URL 参数
+    function getQueryParam(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+    
+    // 显示提示
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+    
+    // 格式化时间
+    function formatTime(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+    
+    // 渲染成员列表
+    function renderMembers(members) {
+      const container = document.getElementById('members');
+      if (!members || members.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-4">暂无成员</p>';
+        return;
+      }
+      
+      container.innerHTML = members.map((m, i) => `
+        <div class="flex items-center bg-stone-700 rounded-xl px-4 py-3">
+          <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-bold mr-3">
+            ${(m.nickname || '玩').charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p class="text-white">${m.nickname || '玩家' + (i + 1)}</p>
+            <p class="text-gray-400 text-xs">${m.isHost ? '房主' : '成员'}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // 加载房间数据
+    function loadRoom() {
+      const roomId = getQueryParam('id') || getQueryParam('room');
+      
+      if (!roomId) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('notFound').classList.remove('hidden');
+        return;
+      }
+      
+      // 尝试从 localStorage 获取
+      let room = null;
+      try {
+        const rooms = JSON.parse(localStorage.getItem('mahjong_rooms') || '{}');
+        room = rooms[roomId];
+      } catch (e) {
+        console.error('读取数据失败', e);
+      }
+      
+      document.getElementById('loading').classList.add('hidden');
+      
+      if (!room) {
+        document.getElementById('notFound').classList.remove('hidden');
+        return;
+      }
+      
+      // 显示房间信息
+      document.getElementById('roomDetail').classList.remove('hidden');
+      document.getElementById('roomCode').textContent = room.id;
+      document.getElementById('location').textContent = room.location || '-';
+      document.getElementById('startTime').textContent = formatTime(room.startTime);
+      document.getElementById('endTime').textContent = room.endTime ? formatTime(room.endTime) : '不限';
+      document.getElementById('memberCount').textContent = room.members?.length || 0;
+      
+      if (!room.endTime) {
+        document.getElementById('endTimeContainer').style.display = 'none';
+      }
+      
+      renderMembers(room.members);
+      
+      // 检查状态
+      const currentUser = localStorage.getItem('mahjong_user');
+      const isInRoom = room.members?.some(m => m.userId === currentUser);
+      const isFull = room.members?.length >= 4;
+      
+      if (isFull) {
+        document.getElementById('joinBtn').style.display = 'none';
+        document.getElementById('fullHint').classList.remove('hidden');
+      } else if (isInRoom) {
+        document.getElementById('joinBtn').style.display = 'none';
+        document.getElementById('alreadyJoined').classList.remove('hidden');
+      }
+    }
+    
+    // 加入房间
+    function joinRoom() {
+      const roomId = getQueryParam('id') || getQueryParam('room');
+      let user = localStorage.getItem('mahjong_user');
+      
+      if (!user) {
+        const nickname = prompt('请输入您的昵称：');
+        if (!nickname) return;
+        user = 'user_' + Date.now();
+        localStorage.setItem('mahjong_user', user);
+        localStorage.setItem('mahjong_nickname', nickname);
+      }
+      
+      const nickname = localStorage.getItem('mahjong_nickname') || '玩家';
+      
+      try {
+        const rooms = JSON.parse(localStorage.getItem('mahjong_rooms') || '{}');
+        if (rooms[roomId]) {
+          if (!rooms[roomId].members) rooms[roomId].members = [];
+          rooms[roomId].members.push({
+            userId: user,
+            nickname: nickname,
+            joinedAt: new Date().toISOString()
+          });
+          localStorage.setItem('mahjong_rooms', JSON.stringify(rooms));
+          
+          showToast('加入成功！');
+          loadRoom(); // 刷新页面
+        }
+      } catch (e) {
+        showToast('加入失败，请重试');
+      }
+    }
+    
+    // 拒绝加入
+    function declineRoom() {
+      showToast('已取消');
+      setTimeout(() => window.close(), 1000);
+    }
+    
+    // 页面加载
+    loadRoom();
+  </script>
+</body>
+</html>

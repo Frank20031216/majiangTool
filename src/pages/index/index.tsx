@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode } from 'lucide-react-taro'
 import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName } from '@/lib/storage'
-import QRCodeModal from '@/components/qrcode-modal'
+import LinkModal from '@/components/link-modal'
 
 interface RoomPreview {
   id: string
@@ -243,7 +243,7 @@ export default function Index() {
                         onClick={() => handleShowQRCode(room)}
                       >
                         <QrCode size={12} color="#B91C1C" />
-                        <Text className="text-red-700 ml-1 text-xs">邀请二维码</Text>
+                        <Text className="text-red-700 ml-1 text-xs">邀请链接</Text>
                       </Button>
                     </View>
                     <View className="flex-1">
@@ -314,8 +314,8 @@ export default function Index() {
         </View>
       )}
       
-      {/* 二维码弹窗 */}
-      <QRCodeModal
+      {/* 邀请链接弹窗 */}
+      <LinkModal
         show={showQRModal}
         roomId={currentQRRoom?.id || ''}
         roomName={currentQRRoom?.location}
