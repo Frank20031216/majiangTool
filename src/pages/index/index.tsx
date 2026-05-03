@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Users, Plus, Clock, User, LogIn, Pencil, Copy } from 'lucide-react-taro'
+import { Users, Plus, Clock, User, LogIn, Pencil, QrCode } from 'lucide-react-taro'
 import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName } from '@/lib/storage'
+import QRCodeModal from '@/components/qrcode-modal'
 
 interface RoomPreview {
   id: string
@@ -23,6 +24,9 @@ export default function Index() {
   const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
+  const [qrModalVisible, setQrModalVisible] = useState(false)
+  const [currentRoomId, setCurrentRoomId] = useState('')
+  const [currentLocation, setCurrentLocation] = useState('')
   
   useEffect(() => {
     loadData()
@@ -85,15 +89,14 @@ export default function Index() {
     Taro.navigateTo({ url: `/pages/room/index?id=${roomId}` })
   }
   
-  const handleCopyRoomLink = (roomId: string, e: any) => {
-    e.stopPropagation()
-    const link = `/pages/room/index?id=${roomId}`
-    Taro.setClipboardData({
-      data: link,
-      success: () => {
-        Taro.showToast({ title: '链接已复制', icon: 'success' })
-      }
-    })
+  const handleShowQRCode = (roomId: string, location: string) => {
+    setCurrentRoomId(roomId)
+    setCurrentLocation(location)
+    setQrModalVisible(true)
+  }
+  
+  const handleCloseQRModal = () => {
+    setQrModalVisible(false)
   }
   
   const refreshRooms = () => {
@@ -198,24 +201,22 @@ export default function Index() {
             allRooms.map(room => (
               <Card 
                 key={room.id} 
-                className="shadow-sm border-0 mb-2"
+                className="shadow-sm border-0 mb-3"
               >
                 <CardContent className="p-4">
                   <View onClick={() => handleEnterRoom(room.id)}>
                     <View className="flex items-start justify-between mb-2">
                       <View className="flex items-center gap-2">
-                        <Text className="block text-gray-800 font-medium">{room.location}</Text>
+                        <Text className="block text-gray-800 font-semibold text-base">{room.location}</Text>
                         {room.isFull && (
                           <Badge variant="destructive" className="rounded-full text-xs">
                             已满
                           </Badge>
                         )}
                       </View>
-                      <View className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-gray-500 border-gray-300 rounded-lg text-xs">
-                          #{room.id}
-                        </Badge>
-                      </View>
+                      <Badge variant="outline" className="text-gray-500 border-gray-300 rounded-lg text-xs">
+                        #{room.id}
+                      </Badge>
                     </View>
                     
                     <View className="flex items-center gap-2 mb-2">
@@ -226,13 +227,11 @@ export default function Index() {
                       <User size={12} color="#9CA3AF" />
                       <Text className="block text-gray-500 text-sm">发局人: {room.creatorName}</Text>
                     </View>
-                    <View className="flex items-center justify-between">
-                      <View className="flex items-center gap-2">
-                        <Users size={12} color="#9CA3AF" />
-                        <Text className="block text-gray-500 text-sm">
-                          {room.membersCount}/4人
-                        </Text>
-                      </View>
+                    <View className="flex items-center gap-2">
+                      <Users size={12} color="#9CA3AF" />
+                      <Text className="block text-gray-500 text-sm">
+                        {room.membersCount}/4人
+                      </Text>
                     </View>
                   </View>
                   
@@ -242,20 +241,20 @@ export default function Index() {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="w-full border-red-200 text-red-700 rounded-lg h-8"
-                        onClick={(e: any) => handleCopyRoomLink(room.id, e)}
+                        className="w-full border-red-200 text-red-700 rounded-lg h-9"
+                        onClick={() => handleShowQRCode(room.id, room.location)}
                       >
-                        <Copy size={12} color="#B91C1C" />
-                        <Text className="text-red-700 ml-1 text-xs">复制链接</Text>
+                        <QrCode size={16} color="#B91C1C" />
+                        <Text className="text-red-700 ml-1 text-sm">邀请二维码</Text>
                       </Button>
                     </View>
                     <View className="flex-1">
                       <Button 
                         size="sm" 
-                        className="w-full bg-red-700 rounded-lg h-8"
+                        className="w-full bg-red-700 rounded-lg h-9"
                         onClick={() => handleEnterRoom(room.id)}
                       >
-                        <Text className="text-white text-xs">进入房间</Text>
+                        <Text className="text-white text-sm">进入房间</Text>
                       </Button>
                     </View>
                   </View>
@@ -268,10 +267,18 @@ export default function Index() {
         {/* 底部说明 */}
         <View className="text-center py-6">
           <Text className="block text-gray-400 text-xs">
-            数据仅保存在本地 · 刷新不丢失
+            扫描二维码即可加入约局
           </Text>
         </View>
       </View>
+      
+      {/* 二维码弹窗 */}
+      <QRCodeModal
+        roomId={currentRoomId}
+        location={currentLocation}
+        visible={qrModalVisible}
+        onClose={handleCloseQRModal}
+      />
       
       {/* 昵称输入弹窗 */}
       {showNicknameInput && (
