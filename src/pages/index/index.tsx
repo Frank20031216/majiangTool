@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import Taro from '@tarojs/taro'
 import { View, Text } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Users, Plus, Clock, MapPin, User, LogIn } from 'lucide-react-taro'
+import { Users, Plus, Clock, MapPin, User, LogIn, Pencil } from 'lucide-react-taro'
 import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName } from '@/lib/storage'
 
 interface RoomPreview {
@@ -20,6 +21,8 @@ interface RoomPreview {
 export default function Index() {
   const [allRooms, setAllRooms] = useState<RoomPreview[]>([])
   const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
+  const [showNicknameInput, setShowNicknameInput] = useState(false)
+  const [nickname, setNickname] = useState('')
   
   useEffect(() => {
     loadData()
@@ -48,58 +51,31 @@ export default function Index() {
     })))
   }
   
-  const handleLogin = async () => {
-    const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
-    
-    if (isWeapp) {
-      // 微信小程序环境：使用 wx.getUserProfile
-      try {
-        const res = await Taro.getUserProfile({
-          desc: '用于显示您的昵称'
-        })
-        
-        if (res.userInfo) {
-          const info = {
-            id: getUserId(),
-            nickname: res.userInfo.nickName,
-            avatar: res.userInfo.avatarUrl
-          }
-          saveUserInfo(info)
-          setUserInfo({ nickname: info.nickname })
-          Taro.showToast({ title: '登录成功', icon: 'success' })
-        }
-      } catch (e: any) {
-        // 用户拒绝授权
-        if (e.errMsg?.includes('cancel')) {
-          Taro.showToast({ title: '您取消了授权', icon: 'none' })
-        } else {
-          // 降级方案：使用默认名称
-          handleGuestLogin()
-        }
-      }
-    } else {
-      // H5环境：使用默认名称或随机生成
-      handleGuestLogin()
-    }
+  const handleLogin = () => {
+    setShowNicknameInput(true)
   }
   
-  const handleGuestLogin = () => {
-    const guestNames = ['牌友甲', '牌友乙', '牌友丙', '麻坛高手', '雀圣']
-    const randomName = guestNames[Math.floor(Math.random() * guestNames.length)] + 
-      Math.floor(Math.random() * 100)
-    
+  const handleNicknameConfirm = () => {
+    const name = nickname.trim() || `牌友${Math.floor(Math.random() * 100)}`
     const info = {
       id: getUserId(),
-      nickname: randomName
+      nickname: name
     }
     saveUserInfo(info)
     setUserInfo({ nickname: info.nickname })
+    setShowNicknameInput(false)
+    setNickname('')
     Taro.showToast({ title: `欢迎 ${info.nickname}`, icon: 'success' })
+  }
+  
+  const handleNicknameCancel = () => {
+    setShowNicknameInput(false)
+    setNickname('')
   }
   
   const handleCreate = () => {
     if (!userInfo) {
-      Taro.showToast({ title: '请先登录', icon: 'none' })
+      Taro.showToast({ title: '请先设置昵称', icon: 'none' })
       return
     }
     Taro.navigateTo({ url: '/pages/create/index' })
@@ -111,6 +87,7 @@ export default function Index() {
   
   const refreshRooms = () => {
     loadAllRooms()
+    Taro.showToast({ title: '已刷新', icon: 'none' })
   }
   
   return (
@@ -127,6 +104,12 @@ export default function Index() {
                   </AvatarFallback>
                 </Avatar>
                 <Text className="text-white text-sm font-medium">{userInfo.nickname}</Text>
+                <View 
+                  onClick={handleLogin}
+                  className="ml-2 p-1"
+                >
+                  <Pencil size={12} color="#fff" />
+                </View>
               </View>
             ) : (
               <Button 
@@ -204,7 +187,7 @@ export default function Index() {
             allRooms.map(room => (
               <Card 
                 key={room.id} 
-                className="shadow-sm border-0 mb-3"
+                className="shadow-sm border-0 mb-2"
                 onClick={() => handleEnterRoom(room.id)}
               >
                 <CardContent className="p-4">
@@ -251,6 +234,50 @@ export default function Index() {
           </Text>
         </View>
       </View>
+      
+      {/* 昵称输入弹窗 */}
+      {showNicknameInput && (
+        <View className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <Text className="block text-gray-800 text-lg font-semibold text-center mb-2">
+              {userInfo ? '修改昵称' : '设置昵称'}
+            </Text>
+            <Text className="block text-gray-500 text-sm text-center mb-4">
+              给自己起个好听的昵称吧
+            </Text>
+            
+            <View className="bg-gray-50 rounded-xl px-4 py-3 mb-4">
+              <Input 
+                className="w-full text-gray-800"
+                placeholder="请输入昵称"
+                value={nickname}
+                onInput={(e: any) => setNickname(e.detail.value)}
+                maxlength={10}
+              />
+            </View>
+            
+            <View className="flex gap-3">
+              <View className="flex-1">
+                <Button 
+                  variant="outline"
+                  className="w-full border-gray-300 rounded-xl h-11"
+                  onClick={handleNicknameCancel}
+                >
+                  <Text>取消</Text>
+                </Button>
+              </View>
+              <View className="flex-1">
+                <Button 
+                  className="w-full bg-red-700 rounded-xl h-11"
+                  onClick={handleNicknameConfirm}
+                >
+                  <Text className="text-white">确定</Text>
+                </Button>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
