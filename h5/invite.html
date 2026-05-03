@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>麻将约局</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      color: #fff;
+    }
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #D4AF37;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #D4AF37;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .info-item:last-child { border-bottom: none; }
+    .info-label { color: rgba(255,255,255,0.7); }
+    .info-value { color: #fff; font-weight: 500; }
+    .room-id {
+      font-size: 28px;
+      font-weight: bold;
+      color: #D4AF37;
+      text-align: center;
+      letter-spacing: 8px;
+      padding: 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    .members { margin-top: 16px; }
+    .member {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #B91C1C, #D4AF37);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      margin-right: 12px;
+    }
+    .member-name { font-size: 16px; }
+    .member-tag {
+      font-size: 12px;
+      color: #D4AF37;
+      margin-left: auto;
+      background: rgba(212,175,55,0.2);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #B91C1C, #991B1B);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(185,28,28,0.4);
+    }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-danger {
+      background: rgba(255,255,255,0.1);
+      color: #ef4444;
+      border: 2px solid #ef4444;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      margin-top: 12px;
+    }
+    .input-group { margin-bottom: 16px; }
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.8);
+    }
+    .input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 16px;
+    }
+    .input:focus {
+      outline: none;
+      border-color: #D4AF37;
+    }
+    .input::placeholder { color: rgba(255,255,255,0.4); }
+    .status {
+      text-align: center;
+      padding: 20px;
+    }
+    .status-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+    .status-text {
+      font-size: 16px;
+      color: rgba(255,255,255,0.8);
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error {
+      color: #ef4444;
+      text-align: center;
+      padding: 20px;
+    }
+    .tips {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      margin-top: 16px;
+    }
+    .full-banner {
+      background: rgba(239,68,68,0.2);
+      border: 2px solid #ef4444;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .full-banner .icon { font-size: 48px; margin-bottom: 12px; }
+    .full-banner .text { color: #ef4444; font-size: 18px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container" id="app"></div>
+
+  <script>
+    // 房间存储键
+    const ROOMS_KEY = 'mahjong_rooms';
+    const USER_KEY = 'mahjong_user';
+
+    // 获取URL参数
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    // 获取昵称
+    function getNickname() {
+      try {
+        const user = localStorage.getItem(USER_KEY);
+        return user ? JSON.parse(user).nickname : null;
+      } catch { return null; }
+    }
+
+    // 保存昵称
+    function saveNickname(nickname) {
+      try {
+        localStorage.setItem(USER_KEY, JSON.stringify({ nickname }));
+      } catch {}
+    }
+
+    // 获取所有房间
+    function getRooms() {
+      try {
+        const rooms = localStorage.getItem(ROOMS_KEY);
+        return rooms ? JSON.parse(rooms) : [];
+      } catch { return []; }
+    }
+
+    // 根据ID获取房间
+    function getRoomById(id) {
+      const rooms = getRooms();
+      return rooms.find(r => r.id === id);
+    }
+
+    // 加入房间
+    function joinRoom(roomId, nickname) {
+      const rooms = getRooms();
+      const roomIndex = rooms.findIndex(r => r.id === roomId);
+      if (roomIndex === -1) return { success: false, error: '房间不存在' };
+      
+      const room = rooms[roomIndex];
+      if (room.members.length >= room.maxPlayers) {
+        return { success: false, error: '房间人数已满' };
+      }
+      
+      // 检查是否已加入
+      if (room.members.some(m => m.nickname === nickname)) {
+        return { success: true, alreadyJoined: true };
+      }
+      
+      room.members.push({
+        id: 'h5_' + Date.now(),
+        nickname: nickname,
+        joinedAt: new Date().toISOString()
+      });
+      
+      rooms[roomIndex] = room;
+      localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
+      return { success: true };
+    }
+
+    // 退出房间
+    function leaveRoom(roomId, nickname) {
+      const rooms = getRooms();
+      const roomIndex = rooms.findIndex(r => r.id === roomId);
+      if (roomIndex === -1) return false;
+      
+      const room = rooms[roomIndex];
+      room.members = room.members.filter(m => m.nickname !== nickname);
+      rooms[roomIndex] = room;
+      localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
+      return true;
+    }
+
+    // 渲染页面
+    function render() {
+      const app = document.getElementById('app');
+      const roomId = getQueryParam('id');
+      
+      if (!roomId) {
+        app.innerHTML = `
+          <div class="container">
+            <div class="header">
+              <div class="logo">🀄</div>
+              <h1 class="title">麻将约局</h1>
+            </div>
+            <div class="card">
+              <div class="error">房间ID不能为空</div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const room = getRoomById(roomId);
+      
+      if (!room) {
+        app.innerHTML = `
+          <div class="container">
+            <div class="header">
+              <div class="logo">🀄</div>
+              <h1 class="title">麻将约局</h1>
+            </div>
+            <div class="card">
+              <div class="error">房间不存在或已解散</div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const nickname = getNickname();
+      const isAlreadyJoined = nickname && room.members.some(m => m.nickname === nickname);
+      const isFull = room.members.length >= room.maxPlayers;
+
+      // 根据状态渲染不同内容
+      if (isFull && !isAlreadyJoined) {
+        // 房间已满
+        app.innerHTML = `
+          <div class="container">
+            <div class="header">
+              <div class="logo">🀄</div>
+              <h1 class="title">麻将约局</h1>
+            </div>
+            <div class="full-banner">
+              <div class="icon">😢</div>
+              <div class="text">房间人数已满</div>
+            </div>
+            <div class="card">
+              <div class="card-title">📋 房间信息</div>
+              <div class="info-item">
+                <span class="info-label">房间号</span>
+                <span class="info-value">${room.id}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">地点</span>
+                <span class="info-value">${room.location || '未指定'}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">开始时间</span>
+                <span class="info-value">${formatTime(room.startTime)}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">当前人数</span>
+                <span class="info-value">${room.members.length}/${room.maxPlayers}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (isAlreadyJoined) {
+        // 已加入房间
+        app.innerHTML = `
+          <div class="container">
+            <div class="header">
+              <div class="logo">🀄</div>
+              <h1 class="title">麻将约局</h1>
+            </div>
+            <div class="card">
+              <div class="card-title">📋 房间信息</div>
+              <div class="room-id">${room.id}</div>
+              <div class="info-item">
+                <span class="info-label">地点</span>
+                <span class="info-value">${room.location || '未指定'}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">开始时间</span>
+                <span class="info-value">${formatTime(room.startTime)}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">结束时间</span>
+                <span class="info-value">${room.endTime ? formatTime(room.endTime) : '未指定'}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">当前人数</span>
+                <span class="info-value">${room.members.length}/${room.maxPlayers}</span>
+              </div>
+              ${room.creator ? '<div class="info-item"><span class="info-label">创建者</span><span class="info-value">' + room.creator + '</span></div>' : ''}
+            </div>
+            <div class="card">
+              <div class="card-title">👥 已加入成员</div>
+              <div class="members">
+                ${room.members.map(m => `
+                  <div class="member">
+                    <div class="avatar">${m.nickname.charAt(0).toUpperCase()}</div>
+                    <span class="member-name">${m.nickname}</span>
+                    ${m.nickname === room.creator ? '<span class="member-tag">房主</span>' : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <button class="btn btn-danger" onclick="handleLeave('${room.id}', '${nickname}')">退出房间</button>
+          </div>
+        `;
+        return;
+      }
+
+      // 未加入房间，显示输入昵称加入
+      app.innerHTML = `
+        <div class="container">
+          <div class="header">
+            <div class="logo">🀄</div>
+            <h1 class="title">麻将约局</h1>
+          </div>
+          <div class="card">
+            <div class="card-title">📋 房间信息</div>
+            <div class="room-id">${room.id}</div>
+            <div class="info-item">
+              <span class="info-label">地点</span>
+              <span class="info-value">${room.location || '未指定'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">开始时间</span>
+              <span class="info-value">${formatTime(room.startTime)}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">结束时间</span>
+              <span class="info-value">${room.endTime ? formatTime(room.endTime) : '未指定'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">当前人数</span>
+              <span class="info-value">${room.members.length}/${room.maxPlayers}</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">🎮 加入约局</div>
+            <div class="input-group">
+              <label>请输入您的昵称</label>
+              <input type="text" id="nickname-input" class="input" placeholder="输入昵称" value="${nickname || ''}" maxlength="10">
+            </div>
+            <button class="btn btn-primary" onclick="handleJoin('${room.id}')">加入约局</button>
+            <p class="tips">加入后可点击下方按钮打开小程序</p>
+          </div>
+          <button class="btn btn-secondary" onclick="openMiniApp()">打开小程序</button>
+        </div>
+      `;
+    }
+
+    // 处理加入
+    function handleJoin(roomId) {
+      const input = document.getElementById('nickname-input');
+      const nickname = input.value.trim();
+      
+      if (!nickname) {
+        alert('请输入昵称');
+        return;
+      }
+
+      // 保存昵称
+      saveNickname(nickname);
+      
+      // 加入房间
+      const result = joinRoom(roomId, nickname);
+      if (!result.success) {
+        alert(result.error);
+        return;
+      }
+
+      // 重新渲染
+      render();
+      
+      // 提示加入成功
+      if (!result.alreadyJoined) {
+        alert('加入成功！');
+      }
+    }
+
+    // 处理退出
+    function handleLeave(roomId, nickname) {
+      if (!confirm('确定要退出房间吗？')) return;
+      
+      leaveRoom(roomId, nickname);
+      render();
+    }
+
+    // 打开小程序
+    function openMiniApp() {
+      // 尝试使用小程序跳转链接
+      window.location.href = 'weixin://dl/business/?t=your_app_id';
+    }
+
+    // 格式化时间
+    function formatTime(isoString) {
+      if (!isoString) return '-';
+      const d = new Date(isoString);
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const hour = d.getHours().toString().padStart(2, '0');
+      const minute = d.getMinutes().toString().padStart(2, '0');
+      return `${month}月${day}日 ${hour}:${minute}`;
+    }
+
+    // 页面加载时渲染
+    render();
+  </script>
+</body>
+</html>
