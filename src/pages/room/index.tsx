@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import Taro from '@tarojs/taro'
+import Taro, { useRouter } from '@tarojs/taro'
 import { View, Text } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -17,6 +17,7 @@ interface RoomData {
 }
 
 export default function RoomDetail() {
+  const router = useRouter()
   const [room, setRoom] = useState<RoomData | null>(null)
   const [roomId, setRoomId] = useState('')
   const [hasJoined, setHasJoined] = useState(false)
@@ -24,14 +25,16 @@ export default function RoomDetail() {
   const [copied, setCopied] = useState(false)
   const [showJoinConfirm, setShowJoinConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   
   useEffect(() => {
-    const params = (Taro.getCurrentInstance().router?.params || {}) as { id?: string }
-    const id = params.id
+    // 从路由参数获取房间ID
+    const id = router.params.id || router.params.roomId
+    
+    console.log('Room page params:', router.params)
     
     if (!id) {
-      Taro.showToast({ title: '房间不存在', icon: 'none' })
-      setTimeout(() => Taro.navigateBack(), 1500)
+      setError('房间ID不存在')
       return
     }
     
@@ -40,17 +43,18 @@ export default function RoomDetail() {
   }, [])
   
   const loadRoom = useCallback((id: string) => {
+    console.log('Loading room:', id)
     const roomData = getRoom(id)
     
     if (!roomData) {
-      Taro.showToast({ title: '房间不存在', icon: 'none' })
-      setTimeout(() => Taro.navigateBack(), 1500)
+      setError('房间不存在或已失效')
       return
     }
     
     setRoom(roomData)
     setHasJoined(hasUserJoined(id))
     setIsCreator(roomData.creatorId === getUserId())
+    setError('')
   }, [])
   
   const handleCopyLink = () => {
@@ -76,7 +80,7 @@ export default function RoomDetail() {
     // 获取用户昵称
     const userInfo = getUserInfo()
     if (!userInfo) {
-      Taro.showToast({ title: '请先在首页登录', icon: 'none' })
+      Taro.showToast({ title: '请先在首页设置昵称', icon: 'none' })
       setLoading(false)
       return
     }
@@ -103,8 +107,30 @@ export default function RoomDetail() {
     Taro.navigateBack()
   }
   
-  const handleRefresh = () => {
-    loadRoom(roomId)
+  // 错误状态
+  if (error) {
+    return (
+      <View className="min-h-screen bg-stone-50 flex flex-col">
+        <View className="bg-gradient-to-b from-red-800 to-red-700 pt-8 pb-6 px-4">
+          <View className="flex items-center">
+            <View onClick={handleBack} className="p-2 -ml-2">
+              <ArrowLeft size={24} color="white" />
+            </View>
+            <Text className="text-white text-lg font-medium ml-2">房间详情</Text>
+          </View>
+        </View>
+        
+        <View className="flex-1 flex flex-col items-center justify-center px-6">
+          <Text className="block text-gray-600 text-lg mb-4">{error}</Text>
+          <Button 
+            className="bg-red-700 text-white rounded-xl"
+            onClick={handleBack}
+          >
+            <Text className="text-white">返回首页</Text>
+          </Button>
+        </View>
+      </View>
+    )
   }
   
   if (!room) {
@@ -117,12 +143,6 @@ export default function RoomDetail() {
   
   const isFull = room.members.length >= 4
   
-  // 满员且未加入，跳转满员提示页
-  if (isFull && !hasJoined && !isCreator) {
-    Taro.redirectTo({ url: `/pages/room/full?id=${roomId}` })
-    return null
-  }
-  
   return (
     <View className="min-h-screen bg-stone-50 flex flex-col">
       {/* 顶部 */}
@@ -132,9 +152,7 @@ export default function RoomDetail() {
             <ArrowLeft size={24} color="white" />
           </View>
           <Text className="text-white text-lg font-medium">房间详情</Text>
-          <View onClick={handleRefresh} className="p-2">
-            <Text className="text-white text-xs">刷新</Text>
-          </View>
+          <View className="w-10" />
         </View>
         
         {/* 房间号 */}
@@ -204,7 +222,7 @@ export default function RoomDetail() {
             
             <View className="space-y-3">
               {room.members.map((member, index) => (
-                <View key={member.id} className="flex items-center">
+                <View key={member.id} className="flex items-center relative">
                   <Avatar className="w-10 h-10 bg-red-100 mr-3">
                     <AvatarFallback className="bg-red-100 text-red-700 font-semibold">
                       {member.name.slice(0, 1)}
@@ -213,7 +231,7 @@ export default function RoomDetail() {
                   <View className="flex-1">
                     <View className="flex items-center gap-2">
                       <Text className="block text-gray-800 font-medium">{member.name}</Text>
-                      {member.id === room.members[0].id && (
+                      {index === 0 && (
                         <Badge variant="outline" className="text-amber-600 border-amber-300 rounded-full text-xs">
                           房主
                         </Badge>
@@ -228,11 +246,6 @@ export default function RoomDetail() {
                       })} 加入
                     </Text>
                   </View>
-                  {index < room.members.length - 1 && (
-                    <View className="absolute bottom-0 left-14 right-4">
-                      <View className="border-b border-gray-100" />
-                    </View>
-                  )}
                 </View>
               ))}
             </View>
@@ -272,7 +285,7 @@ export default function RoomDetail() {
               >
                 <View className="flex items-center">
                   <X size={18} color="#6B7280" />
-                  <Text>拒绝加入</Text>
+                  <Text className="ml-1">拒绝加入</Text>
                 </View>
               </Button>
             </View>
