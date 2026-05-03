@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Users, Plus, Clock, MapPin, User, LogIn, Pencil } from 'lucide-react-taro'
+import { Users, Plus, Clock, User, LogIn, Pencil, Copy } from 'lucide-react-taro'
 import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName } from '@/lib/storage'
 
 interface RoomPreview {
@@ -83,6 +83,17 @@ export default function Index() {
   
   const handleEnterRoom = (roomId: string) => {
     Taro.navigateTo({ url: `/pages/room/index?id=${roomId}` })
+  }
+  
+  const handleCopyRoomLink = (roomId: string, e: any) => {
+    e.stopPropagation()
+    const link = `/pages/room/index?id=${roomId}`
+    Taro.setClipboardData({
+      data: link,
+      success: () => {
+        Taro.showToast({ title: '链接已复制', icon: 'success' })
+      }
+    })
   }
   
   const refreshRooms = () => {
@@ -188,38 +199,65 @@ export default function Index() {
               <Card 
                 key={room.id} 
                 className="shadow-sm border-0 mb-2"
-                onClick={() => handleEnterRoom(room.id)}
               >
                 <CardContent className="p-4">
-                  <View className="flex items-start justify-between">
-                    <View className="flex-1">
-                      <View className="flex items-center gap-2 mb-2">
-                        <MapPin size={14} color="#9CA3AF" />
-                        <Text className="block text-gray-800 font-medium">{room.location}</Text>
-                      </View>
-                      <View className="flex items-center gap-2 mb-2">
-                        <Clock size={14} color="#9CA3AF" />
-                        <Text className="block text-gray-500 text-sm">{formatTime(room.startTime)}</Text>
-                      </View>
-                      <View className="flex items-center gap-2 mb-2">
-                        <User size={14} color="#9CA3AF" />
-                        <Text className="block text-gray-500 text-sm">发局人: {room.creatorName}</Text>
-                      </View>
+                  <View onClick={() => handleEnterRoom(room.id)}>
+                    <View className="flex items-start justify-between mb-2">
                       <View className="flex items-center gap-2">
-                        <Users size={14} color="#9CA3AF" />
-                        <Text className="block text-gray-500 text-sm">
-                          {room.membersCount}/4人
-                        </Text>
+                        <Text className="block text-gray-800 font-medium">{room.location}</Text>
                         {room.isFull && (
-                          <Badge variant="destructive" className="rounded-full text-xs ml-1">
+                          <Badge variant="destructive" className="rounded-full text-xs">
                             已满
                           </Badge>
                         )}
                       </View>
+                      <View className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-gray-500 border-gray-300 rounded-lg text-xs">
+                          #{room.id}
+                        </Badge>
+                      </View>
                     </View>
-                    <Badge variant="outline" className="text-gray-500 border-gray-300 rounded-lg">
-                      #{room.id}
-                    </Badge>
+                    
+                    <View className="flex items-center gap-2 mb-2">
+                      <Clock size={12} color="#9CA3AF" />
+                      <Text className="block text-gray-500 text-sm">{formatTime(room.startTime)}</Text>
+                    </View>
+                    <View className="flex items-center gap-2 mb-2">
+                      <User size={12} color="#9CA3AF" />
+                      <Text className="block text-gray-500 text-sm">发局人: {room.creatorName}</Text>
+                    </View>
+                    <View className="flex items-center justify-between">
+                      <View className="flex items-center gap-2">
+                        <Users size={12} color="#9CA3AF" />
+                        <Text className="block text-gray-500 text-sm">
+                          {room.membersCount}/4人
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  
+                  {/* 操作按钮 */}
+                  <View className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                    <View className="flex-1">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full border-red-200 text-red-700 rounded-lg h-8"
+                        onClick={(e: any) => handleCopyRoomLink(room.id, e)}
+                      >
+                        <Copy size={12} color="#B91C1C" />
+                        <Text className="text-red-700 ml-1 text-xs">复制链接</Text>
+                      </Button>
+                    </View>
+                    <View className="flex-1">
+                      <Button 
+                        size="sm" 
+                        className="w-full bg-red-700 rounded-lg h-8"
+                        onClick={() => handleEnterRoom(room.id)}
+                      >
+                        <Text className="text-white text-xs">进入房间</Text>
+                      </Button>
+                    </View>
                   </View>
                 </CardContent>
               </Card>
