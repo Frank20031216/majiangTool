@@ -6,9 +6,19 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Users, Plus, Clock, User, LogIn, Pencil, QrCode } from 'lucide-react-taro'
-import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName } from '@/lib/storage'
+import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
+import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName, deleteRoom, logout } from '@/lib/storage'
 import LinkModal from '@/components/link-modal'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 interface RoomPreview {
   id: string
@@ -20,29 +30,28 @@ interface RoomPreview {
 }
 
 export default function Index() {
-  const [allRooms, setAllRooms] = useState<RoomPreview[]>([])
+  const [allRooms, setAllRooms] = useState<(RoomPreview & { isCreator: boolean })[]>([])
   const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
   const [showQRModal, setShowQRModal] = useState(false)
   const [currentQRRoom, setCurrentQRRoom] = useState<RoomPreview | null>(null)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [deleteRoomId, setDeleteRoomId] = useState<string | null>(null)
   
   useEffect(() => {
     loadData()
   }, [])
   
   const loadData = () => {
-    // 加载用户信息
     const info = getUserInfo()
     setUserInfo(info)
-    
-    // 加载所有房间
     loadAllRooms()
   }
   
   const loadAllRooms = () => {
     const rooms = getAllRooms()
-    // 按创建时间倒序排列
+    const uid = getUserId()
     const sortedRooms = [...rooms].sort((a, b) => b.createdAt - a.createdAt)
     setAllRooms(sortedRooms.map(r => ({
       id: r.id,
@@ -50,12 +59,41 @@ export default function Index() {
       startTime: r.startTime,
       creatorName: getCreatorName(r),
       membersCount: r.members.length,
-      isFull: r.members.length >= 4
+      isFull: r.members.length >= 4,
+      isCreator: r.creatorId === uid
     })))
   }
   
   const handleLogin = () => {
     setShowNicknameInput(true)
+  }
+  
+  const handleLogout = () => {
+    setShowLogoutConfirm(true)
+  }
+  
+  const confirmLogout = () => {
+    logout()
+    setUserInfo(null)
+    setShowLogoutConfirm(false)
+    Taro.showToast({ title: '已退出登录', icon: 'success' })
+  }
+  
+  const handleDeleteRoom = (roomId: string) => {
+    setDeleteRoomId(roomId)
+  }
+  
+  const confirmDeleteRoom = () => {
+    if (deleteRoomId) {
+      const success = deleteRoom(deleteRoomId)
+      if (success) {
+        Taro.showToast({ title: '房间已删除', icon: 'success' })
+        loadAllRooms()
+      } else {
+        Taro.showToast({ title: '删除失败', icon: 'none' })
+      }
+    }
+    setDeleteRoomId(null)
   }
   
   const handleNicknameConfirm = () => {
@@ -130,8 +168,15 @@ export default function Index() {
               </Button>
             )}
           </View>
-          <View onClick={refreshRooms} className="p-2">
-            <Text className="text-white bg-opacity-80 text-xs">刷新</Text>
+          <View className="flex items-center gap-2">
+            {userInfo && (
+              <View onClick={handleLogout} className="p-2">
+                <LogOut size={16} color="#fff" />
+              </View>
+            )}
+            <View onClick={refreshRooms} className="p-2">
+              <Text className="text-white bg-opacity-80 text-xs">刷新</Text>
+            </View>
           </View>
         </View>
         
@@ -207,6 +252,11 @@ export default function Index() {
                             已满
                           </Badge>
                         )}
+                        {room.isCreator && (
+                          <Badge variant="outline" className="border-amber-400 text-amber-600 rounded-full text-xs">
+                            房主
+                          </Badge>
+                        )}
                       </View>
                       <View className="flex items-center gap-2">
                         <Badge variant="outline" className="text-gray-500 border-gray-300 rounded-lg text-xs">
@@ -235,6 +285,21 @@ export default function Index() {
                   
                   {/* 操作按钮 */}
                   <View className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                    {room.isCreator && (
+                      <View className="flex-shrink-0">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="border-gray-300 text-gray-600 rounded-lg h-8 px-3"
+                          onClick={(e) => {
+                            e.stopPropagation?.()
+                            handleDeleteRoom(room.id)
+                          }}
+                        >
+                          <Trash2 size={12} color="#6B7280" />
+                        </Button>
+                      </View>
+                    )}
                     <View className="flex-1">
                       <Button 
                         size="sm" 
@@ -313,6 +378,42 @@ export default function Index() {
           </View>
         </View>
       )}
+      
+      {/* 登出确认弹窗 */}
+      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>退出登录</AlertDialogTitle>
+            <AlertDialogDescription>确定要退出登录吗？退出后需要重新设置昵称。</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowLogoutConfirm(false)}>
+              <Text>取消</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLogout}>
+              <Text>确定退出</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* 删除房间确认弹窗 */}
+      <AlertDialog open={!!deleteRoomId} onOpenChange={(open) => !open && setDeleteRoomId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除房间</AlertDialogTitle>
+            <AlertDialogDescription>确定要删除这个房间吗？删除后无法恢复。</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteRoomId(null)}>
+              <Text>取消</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteRoom}>
+              <Text>确定删除</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       {/* 邀请链接弹窗 */}
       <LinkModal

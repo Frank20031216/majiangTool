@@ -188,6 +188,36 @@ export function formatTime(dateStr: string): string {
   })
 }
 
+// 删除房间（房主操作）
+export function deleteRoom(roomId: string): boolean {
+  const userId = getUserId()
+  const rooms = getAllRooms()
+  const room = rooms.find(r => r.id === roomId)
+  
+  // 只有房主才能删除
+  if (!room || room.creatorId !== userId) return false
+  
+  const filteredRooms = rooms.filter(r => r.id !== roomId)
+  saveRooms(filteredRooms)
+  
+  // 清除用户的加入记录
+  const records = getUserRecords()
+  const filteredRecords = records.filter(r => r.roomId !== roomId)
+  Taro.setStorageSync(STORAGE_KEYS.USER_RECORDS, JSON.stringify(filteredRecords))
+  
+  return true
+}
+
+// 退出登录（清除用户信息，保留用户ID用于追踪）
+export function logout(): void {
+  Taro.removeStorageSync(STORAGE_KEYS.USER_INFO)
+}
+
+// 检查用户是否已登录
+export function isLoggedIn(): boolean {
+  return !!getUserInfo()
+}
+
 // 获取房间创建者名称
 export function getCreatorName(room: Room): string {
   if (room.members.length > 0 && room.members[0].id === room.creatorId) {
