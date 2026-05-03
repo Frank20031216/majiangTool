@@ -8,27 +8,20 @@ interface LinkModalProps {
   onClose: () => void
 }
 
-// TODO: 部署后替换为实际的 H5 域名
-const H5_DOMAIN = "https://your-domain.com"
-
 export default function LinkModal({ show, roomId, roomName, onClose }: LinkModalProps) {
   if (!show) return null
 
-  const inviteLink = `${H5_DOMAIN}/h5/invite.html?id=${roomId}`
+  // 小程序页面路径
+  const miniPagePath = `/pages/room/index?id=${roomId}`
 
-  const handleCopyLink = () => {
+  // 复制小程序链接
+  const handleCopyMiniLink = () => {
     Taro.setClipboardData({
-      data: inviteLink,
+      data: miniPagePath,
       success: () => {
         Taro.showToast({
-          title: "链接已复制",
+          title: "已复制小程序路径",
           icon: "success"
-        })
-      },
-      fail: () => {
-        Taro.showToast({
-          title: "复制失败",
-          icon: "none"
         })
       }
     })
@@ -54,17 +47,17 @@ export default function LinkModal({ show, roomId, roomName, onClose }: LinkModal
           </Text>
         </View>
         
-        {/* 链接 */}
-        <View className="bg-gray-50 rounded-xl px-4 py-3 mb-4 w-full">
-          <Text className="block text-xs text-gray-500 mb-1">邀请链接</Text>
+        {/* 小程序页面路径 */}
+        <View className="bg-gray-50 rounded-xl px-4 py-3 mb-3 w-full">
+          <Text className="block text-xs text-gray-500 mb-1">小程序路径</Text>
           <Text className="block text-sm text-gray-700 break-all leading-relaxed">
-            {inviteLink}
+            {miniPagePath}
           </Text>
         </View>
-        
+
         {/* 提示 */}
         <Text className="block text-xs text-gray-400 text-center mb-4">
-          复制链接发送给好友{"\n"}好友点击链接即可加入约局
+          复制路径后发送给好友{"\n"}好友打开小程序并粘贴路径即可加入
         </Text>
         
         {/* 操作按钮 */}
@@ -77,9 +70,9 @@ export default function LinkModal({ show, roomId, roomName, onClose }: LinkModal
           </View>
           <View 
             className="flex-1 bg-red-600 rounded-xl py-3 text-center"
-            onClick={handleCopyLink}
+            onClick={handleCopyMiniLink}
           >
-            <Text className="block text-white">复制链接</Text>
+            <Text className="block text-white">复制路径</Text>
           </View>
         </View>
       </View>
