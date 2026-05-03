@@ -1,13 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import Taro, { useRouter } from '@tarojs/taro'
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ArrowLeft, MapPin, Clock, Users, QrCode, X } from 'lucide-react-taro'
-import { getRoom, joinRoom, hasUserJoined, formatTime, getUserId, getUserInfo } from '@/lib/storage'
-import { generateQRCodeDataUrl } from '@/lib/qrcode'
+import { ArrowLeft, MapPin, Clock, Users, Copy, Check, X } from 'lucide-react-taro'
+import { getRoom, joinRoom, hasUserJoined, generateInviteLink, formatTime, getUserId, getUserInfo } from '@/lib/storage'
 
 interface RoomData {
   id: string
@@ -23,8 +22,7 @@ export default function RoomDetail() {
   const [roomId, setRoomId] = useState('')
   const [hasJoined, setHasJoined] = useState(false)
   const [isCreator, setIsCreator] = useState(false)
-  const [showQRCode, setShowQRCode] = useState(false)
-  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [copied, setCopied] = useState(false)
   const [showJoinConfirm, setShowJoinConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -32,6 +30,8 @@ export default function RoomDetail() {
   useEffect(() => {
     // 从路由参数获取房间ID
     const id = router.params.id || router.params.roomId
+    
+    console.log('Room page params:', router.params)
     
     if (!id) {
       setError('房间ID不存在')
@@ -43,6 +43,7 @@ export default function RoomDetail() {
   }, [])
   
   const loadRoom = useCallback((id: string) => {
+    console.log('Loading room:', id)
     const roomData = getRoom(id)
     
     if (!roomData) {
@@ -56,18 +57,16 @@ export default function RoomDetail() {
     setError('')
   }, [])
   
-  const handleShowQRCode = async () => {
-    setShowQRCode(true)
-    try {
-      const url = await generateQRCodeDataUrl(roomId)
-      setQrCodeUrl(url)
-    } catch (e) {
-      console.error('生成二维码失败', e)
-    }
-  }
-  
-  const handleHideQRCode = () => {
-    setShowQRCode(false)
+  const handleCopyLink = () => {
+    const link = generateInviteLink(roomId)
+    Taro.setClipboardData({
+      data: link,
+      success: () => {
+        setCopied(true)
+        Taro.showToast({ title: '链接已复制', icon: 'success' })
+        setTimeout(() => setCopied(false), 2000)
+      }
+    })
   }
   
   const handleJoin = () => {
@@ -253,22 +252,23 @@ export default function RoomDetail() {
           </CardContent>
         </Card>
         
-        {/* 邀约二维码 */}
+        {/* 邀约链接 */}
         <Card className="shadow-md border-0 mb-5">
           <CardContent className="p-4">
             <View className="flex items-center justify-between">
               <View className="flex-1">
-                <Text className="block text-gray-500 text-xs mb-1">邀请好友扫码加入</Text>
-                <Text className="block text-gray-700 text-sm">扫描二维码加入此房间</Text>
+                <Text className="block text-gray-500 text-xs mb-1">邀约链接</Text>
+                <Text className="block text-gray-700 text-sm truncate">
+                  {generateInviteLink(roomId)}
+                </Text>
               </View>
               <Button 
-                variant="outline"
+                variant="ghost" 
                 size="sm" 
-                className="ml-3 border-red-200 text-red-700 rounded-xl"
-                onClick={handleShowQRCode}
+                className="ml-3"
+                onClick={handleCopyLink}
               >
-                <QrCode size={18} color="#B91C1C" />
-                <Text className="text-red-700 ml-1">查看二维码</Text>
+                {copied ? <Check size={18} color="#059669" /> : <Copy size={18} color="#6B7280" />}
               </Button>
             </View>
           </CardContent>
@@ -307,51 +307,6 @@ export default function RoomDetail() {
           </View>
         )}
       </View>
-      
-      {/* 二维码弹窗 */}
-      {showQRCode && (
-        <View className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 px-4">
-          <View className="bg-white rounded-2xl p-6 w-full max-w-xs">
-            <Text className="block text-gray-800 text-lg font-semibold text-center mb-2">
-              邀约二维码
-            </Text>
-            <Text className="block text-gray-500 text-sm text-center mb-4">
-              扫描二维码加入「{room.location}」
-            </Text>
-            
-            {/* 二维码 */}
-            <View className="flex justify-center mb-4">
-              {qrCodeUrl ? (
-                <Image 
-                  src={qrCodeUrl}
-                  className="w-56 h-56 rounded-xl"
-                  mode="aspectFit"
-                />
-              ) : (
-                <View className="w-56 h-56 bg-gray-100 rounded-xl flex items-center justify-center">
-                  <Text className="text-gray-400 text-sm">生成中...</Text>
-                </View>
-              )}
-            </View>
-            
-            {/* 房间号 */}
-            <View className="bg-gray-50 rounded-xl p-3 mb-4">
-              <Text className="block text-gray-500 text-xs text-center">房间号</Text>
-              <Text className="block text-gray-800 text-xl font-bold text-center tracking-widest">
-                {room.id}
-              </Text>
-            </View>
-            
-            {/* 关闭按钮 */}
-            <Button 
-              className="w-full bg-red-700 text-white rounded-xl h-11"
-              onClick={handleHideQRCode}
-            >
-              <Text className="text-white">关闭</Text>
-            </Button>
-          </View>
-        </View>
-      )}
       
       {/* 加入确认弹窗 */}
       {showJoinConfirm && (
