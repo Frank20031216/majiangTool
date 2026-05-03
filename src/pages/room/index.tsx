@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ArrowLeft, MapPin, Clock, Users, Copy, Check, X } from 'lucide-react-taro'
+import { ArrowLeft, MapPin, Clock, Users, X, QrCode } from 'lucide-react-taro'
 import { getRoom, joinRoom, hasUserJoined, generateInviteLink, formatTime, getUserId, getUserInfo } from '@/lib/storage'
+import QRCodeModal from '@/components/qrcode-modal'
 
 interface RoomData {
   id: string
@@ -22,10 +23,10 @@ export default function RoomDetail() {
   const [roomId, setRoomId] = useState('')
   const [hasJoined, setHasJoined] = useState(false)
   const [isCreator, setIsCreator] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [showJoinConfirm, setShowJoinConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showQRModal, setShowQRModal] = useState(false)
   
   useEffect(() => {
     // 从路由参数获取房间ID
@@ -56,18 +57,6 @@ export default function RoomDetail() {
     setIsCreator(roomData.creatorId === getUserId())
     setError('')
   }, [])
-  
-  const handleCopyLink = () => {
-    const link = generateInviteLink(roomId)
-    Taro.setClipboardData({
-      data: link,
-      success: () => {
-        setCopied(true)
-        Taro.showToast({ title: '链接已复制', icon: 'success' })
-        setTimeout(() => setCopied(false), 2000)
-      }
-    })
-  }
   
   const handleJoin = () => {
     setShowJoinConfirm(true)
@@ -266,9 +255,9 @@ export default function RoomDetail() {
                 variant="ghost" 
                 size="sm" 
                 className="ml-3"
-                onClick={handleCopyLink}
+                onClick={() => setShowQRModal(true)}
               >
-                {copied ? <Check size={18} color="#059669" /> : <Copy size={18} color="#6B7280" />}
+                <QrCode size={18} color="#B91C1C" />
               </Button>
             </View>
           </CardContent>
@@ -341,6 +330,14 @@ export default function RoomDetail() {
           </View>
         </View>
       )}
+      
+      {/* 二维码弹窗 */}
+      <QRCodeModal
+        show={showQRModal}
+        roomId={roomId}
+        roomName={room?.location}
+        onClose={() => setShowQRModal(false)}
+      />
     </View>
   )
 }
