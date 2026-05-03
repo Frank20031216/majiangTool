@@ -37,34 +37,6 @@ const STORAGE_KEYS = {
   USER_INFO: 'mahjong_user_info'
 }
 
-// 判断运行环境
-const isH5 = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
-
-// 本地存储封装，兼容小程序和H5
-const storage = {
-  getItem: (key: string): string | null => {
-    if (isH5) {
-      return localStorage.getItem(key)
-    } else {
-      return Taro.getStorageSync(key)
-    }
-  },
-  setItem: (key: string, value: string): void => {
-    if (isH5) {
-      localStorage.setItem(key, value)
-    } else {
-      Taro.setStorageSync(key, value)
-    }
-  },
-  removeItem: (key: string): void => {
-    if (isH5) {
-      localStorage.removeItem(key)
-    } else {
-      Taro.removeStorageSync(key)
-    }
-  }
-}
-
 // 生成唯一ID
 export function generateId(length = 6): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -77,34 +49,34 @@ export function generateId(length = 6): string {
 
 // 获取用户ID（首次访问时生成）
 export function getUserId(): string {
-  let userId = storage.getItem(STORAGE_KEYS.USER_ID)
+  let userId = Taro.getStorageSync(STORAGE_KEYS.USER_ID)
   if (!userId) {
     userId = generateId(8)
-    storage.setItem(STORAGE_KEYS.USER_ID, userId)
+    Taro.setStorageSync(STORAGE_KEYS.USER_ID, userId)
   }
   return userId
 }
 
 // 获取用户信息
 export function getUserInfo(): UserInfo | null {
-  const data = storage.getItem(STORAGE_KEYS.USER_INFO)
+  const data = Taro.getStorageSync(STORAGE_KEYS.USER_INFO)
   return data ? JSON.parse(data) : null
 }
 
 // 保存用户信息
 export function saveUserInfo(info: UserInfo): void {
-  storage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify(info))
+  Taro.setStorageSync(STORAGE_KEYS.USER_INFO, JSON.stringify(info))
 }
 
 // 获取所有房间
 export function getAllRooms(): Room[] {
-  const data = storage.getItem(STORAGE_KEYS.ROOMS)
+  const data = Taro.getStorageSync(STORAGE_KEYS.ROOMS)
   return data ? JSON.parse(data) : []
 }
 
 // 保存房间
 export function saveRooms(rooms: Room[]): void {
-  storage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(rooms))
+  Taro.setStorageSync(STORAGE_KEYS.ROOMS, JSON.stringify(rooms))
 }
 
 // 创建房间
@@ -190,33 +162,19 @@ function recordUserJoin(roomId: string, memberId: string): void {
       memberId,
       joinedAt: Date.now()
     })
-    storage.setItem(STORAGE_KEYS.USER_RECORDS, JSON.stringify(records))
+    Taro.setStorageSync(STORAGE_KEYS.USER_RECORDS, JSON.stringify(records))
   }
 }
 
 // 获取用户记录
 function getUserRecords(): UserRecord[] {
-  const data = storage.getItem(STORAGE_KEYS.USER_RECORDS)
+  const data = Taro.getStorageSync(STORAGE_KEYS.USER_RECORDS)
   return data ? JSON.parse(data) : []
 }
 
-// 生成邀请链接
+// 生成邀请链接（小程序页面路径）
 export function generateInviteLink(roomId: string): string {
-  // 小程序环境使用相对路径
-  const isWeapp = Taro.getEnv() === Taro.ENV_TYPE.WEAPP
-  const isTT = Taro.getEnv() === Taro.ENV_TYPE.TT
-  
-  if (isWeapp || isTT) {
-    return `/pages/room/index?id=${roomId}`
-  }
-  
-  // H5环境
-  if (typeof window !== 'undefined') {
-    const baseUrl = window.location.origin
-    return `${baseUrl}/pages/room/index?id=${roomId}`
-  }
-  
-  return `pages/room/index?id=${roomId}`
+  return `/pages/room/index?id=${roomId}`
 }
 
 // 格式化时间
