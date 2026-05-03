@@ -21,11 +21,18 @@ export interface UserRecord {
   joinedAt: number
 }
 
+export interface UserInfo {
+  id: string
+  nickname: string
+  avatar?: string
+}
+
 // 存储键名
 const STORAGE_KEYS = {
   ROOMS: 'mahjong_rooms',
   USER_RECORDS: 'mahjong_user_records',
-  USER_ID: 'mahjong_user_id'
+  USER_ID: 'mahjong_user_id',
+  USER_INFO: 'mahjong_user_info'
 }
 
 // 生成唯一ID
@@ -48,8 +55,19 @@ export function getUserId(): string {
   return userId
 }
 
+// 获取用户信息
+export function getUserInfo(): UserInfo | null {
+  const data = localStorage.getItem(STORAGE_KEYS.USER_INFO)
+  return data ? JSON.parse(data) : null
+}
+
+// 保存用户信息
+export function saveUserInfo(info: UserInfo): void {
+  localStorage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify(info))
+}
+
 // 获取所有房间
-export function getRooms(): Room[] {
+export function getAllRooms(): Room[] {
   const data = localStorage.getItem(STORAGE_KEYS.ROOMS)
   return data ? JSON.parse(data) : []
 }
@@ -62,6 +80,8 @@ export function saveRooms(rooms: Room[]): void {
 // 创建房间
 export function createRoom(location: string, startTime: string, endTime?: string): Room {
   const userId = getUserId()
+  const userInfo = getUserInfo()
+  
   const room: Room = {
     id: generateId(),
     location,
@@ -70,13 +90,13 @@ export function createRoom(location: string, startTime: string, endTime?: string
     creatorId: userId,
     members: [{
       id: userId,
-      name: '房主',
+      name: userInfo?.nickname || '房主',
       joinedAt: Date.now()
     }],
     createdAt: Date.now()
   }
   
-  const rooms = getRooms()
+  const rooms = getAllRooms()
   rooms.push(room)
   saveRooms(rooms)
   
@@ -88,13 +108,13 @@ export function createRoom(location: string, startTime: string, endTime?: string
 
 // 获取单个房间
 export function getRoom(roomId: string): Room | undefined {
-  const rooms = getRooms()
+  const rooms = getAllRooms()
   return rooms.find(r => r.id === roomId)
 }
 
 // 加入房间
 export function joinRoom(roomId: string, memberName: string): boolean {
-  const rooms = getRooms()
+  const rooms = getAllRooms()
   const room = rooms.find(r => r.id === roomId)
   
   if (!room) return false
@@ -107,7 +127,7 @@ export function joinRoom(roomId: string, memberName: string): boolean {
   
   room.members.push({
     id: userId,
-    name: memberName || '牌友',
+    name: memberName,
     joinedAt: Date.now()
   })
   
@@ -127,7 +147,7 @@ export function hasUserJoined(roomId: string): boolean {
 // 获取用户已加入的房间
 export function getUserRooms(): Room[] {
   const userId = getUserId()
-  const rooms = getRooms()
+  const rooms = getAllRooms()
   return rooms.filter(r => r.members.some(m => m.id === userId))
 }
 
@@ -165,4 +185,13 @@ export function formatTime(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// 获取房间创建者名称
+export function getCreatorName(room: Room): string {
+  if (room.members.length > 0 && room.members[0].id === room.creatorId) {
+    return room.members[0].name
+  }
+  const creator = room.members.find(m => m.id === room.creatorId)
+  return creator?.name || '未知'
 }

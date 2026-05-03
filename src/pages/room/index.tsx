@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ArrowLeft, MapPin, Clock, Users, Copy, Check, X } from 'lucide-react-taro'
-import { getRoom, joinRoom, hasUserJoined, generateInviteLink, formatTime, getUserId } from '@/lib/storage'
+import { getRoom, joinRoom, hasUserJoined, generateInviteLink, formatTime, getUserId, getUserInfo } from '@/lib/storage'
 
 interface RoomData {
   id: string
@@ -73,7 +73,15 @@ export default function RoomDetail() {
     setLoading(true)
     setShowJoinConfirm(false)
     
-    const success = joinRoom(roomId, '牌友')
+    // 获取用户昵称
+    const userInfo = getUserInfo()
+    if (!userInfo) {
+      Taro.showToast({ title: '请先在首页登录', icon: 'none' })
+      setLoading(false)
+      return
+    }
+    
+    const success = joinRoom(roomId, userInfo.nickname)
     
     if (success) {
       Taro.showToast({ title: '加入成功', icon: 'success' })
