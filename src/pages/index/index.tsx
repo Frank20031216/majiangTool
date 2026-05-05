@@ -90,11 +90,17 @@ export default function Index() {
   
   const confirmDeleteRoom = async () => {
     if (deleteRoomId) {
+      const room = allRooms.find(r => r.id === deleteRoomId)
+      if (!room) return
+      
       try {
-        await Network.request({
+        console.log('删除房间:', deleteRoomId)
+        const res = await Network.request({
           url: `/api/rooms/${deleteRoomId}`,
-          method: 'DELETE'
+          method: 'DELETE',
+          data: { creator_id: getUserId() }
         })
+        console.log('删除结果:', res.data)
         Taro.showToast({ title: '房间已删除', icon: 'success' })
         await loadAllRooms()
       } catch (err) {
