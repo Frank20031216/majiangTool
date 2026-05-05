@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
-import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
+import { getUserInfo, saveUserInfo, getUserId, formatTime, logout, wxLogin } from '@/lib/storage'
 import { Network } from '@/network'
 import LinkModal from '@/components/link-modal'
 import {
@@ -69,8 +69,28 @@ export default function Index() {
     }
   }
   
-  const handleLogin = () => {
-    setShowNicknameInput(true)
+  const handleLogin = async () => {
+    // 已登录，点击修改昵称
+    if (userInfo) {
+      setShowNicknameInput(true)
+      setNickname(userInfo.nickname)
+      return
+    }
+    
+    // 未登录，使用微信授权登录
+    try {
+      const info = await wxLogin()
+      if (info) {
+        setUserInfo({ nickname: info.nickname })
+        Taro.showToast({ title: `欢迎 ${info.nickname}`, icon: 'success' })
+      }
+    } catch (err) {
+      console.error('微信登录失败:', err)
+      // 微信授权失败，使用手动输入昵称
+      Taro.showToast({ title: '微信授权失败，请手动输入昵称', icon: 'none' })
+      setShowNicknameInput(true)
+      setNickname('')
+    }
   }
   
   const handleLogout = () => {
