@@ -63,7 +63,7 @@ export class RoomService {
   async createRoom(room: Omit<RoomData, 'id' | 'created_at'>): Promise<RoomData> {
     // 使用时间戳生成房间号
     const roomCode = this.generateRoomCode();
-
+    console.log(`新建房间号:${roomCode}`);
     const { data, error } = await this.supabase
       .from('rooms')
       .insert({

@@ -70,6 +70,7 @@ export default function CreateRoom() {
         throw new Error('创建失败')
       }
       
+      console.log('创建房间成功，返回数据:', res.data)
       setRoomId(newRoom.id)
       setInviteLink(generateInviteLink(newRoom.id))
       setCreated(true)
