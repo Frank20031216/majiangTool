@@ -188,6 +188,22 @@ export function formatTime(dateStr: string): string {
   })
 }
 
+// 刷新标记：用于通知首页刷新数据
+const REFRESH_FLAG_KEY = 'room_refresh_flag'
+
+export function setRoomRefreshFlag() {
+  Taro.setStorageSync(REFRESH_FLAG_KEY, Date.now().toString())
+}
+
+export function getRoomRefreshFlag(): boolean {
+  const flag = Taro.getStorageSync(REFRESH_FLAG_KEY)
+  return !!flag
+}
+
+export function clearRoomRefreshFlag() {
+  Taro.removeStorageSync(REFRESH_FLAG_KEY)
+}
+
 // 删除房间（房主操作）
 export function deleteRoom(roomId: string): boolean {
   const userId = getUserId()
