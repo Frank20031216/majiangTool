@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ArrowLeft, MapPin, Clock, Users } from 'lucide-react-taro'
-import { getUserInfo, getUserId } from '@/lib/storage'
+import { getUserInfo, getUserId, formatTime } from '@/lib/storage'
 import { Network } from '@/network'
 
 interface Member {
@@ -202,7 +202,7 @@ export default function RoomDetail() {
             <View className="flex items-center mb-3">
               <Clock size={18} color="#92400e" />
               <Text className="block text-gray-700 ml-2 text-base">
-                开始：{room.start_time}
+                开始：{formatTime(room.start_time)}
               </Text>
             </View>
             
@@ -211,7 +211,7 @@ export default function RoomDetail() {
               <View className="flex items-center mb-3">
                 <Clock size={18} color="#92400e" />
                 <Text className="block text-gray-700 ml-2 text-base">
-                  结束：{room.end_time}
+                  结束：{formatTime(room.end_time)}
                 </Text>
               </View>
             )}
