@@ -7,8 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
-import { getUserInfo, saveUserInfo, getUserId, formatTime, logout, UserInfo } from '@/lib/storage'
-import { wxLogin } from '@/lib/auth'
+import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
 import { Network } from '@/network'
 import LinkModal from '@/components/link-modal'
 import {
@@ -33,7 +32,7 @@ interface RoomPreview {
 
 export default function Index() {
   const [allRooms, setAllRooms] = useState<(RoomPreview & { isCreator: boolean })[]>([])
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
+  const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
   const [showQRModal, setShowQRModal] = useState(false)
@@ -70,21 +69,8 @@ export default function Index() {
     }
   }
   
-  const handleLogin = async () => {
-    try {
-      const result = await wxLogin()
-      if (result) {
-        setUserInfo({
-          id: result.userId,
-          nickname: result.nickname,
-          avatar: result.avatarUrl
-        })
-        Taro.showToast({ title: '登录成功', icon: 'success' })
-      }
-    } catch (err) {
-      console.error('登录失败:', err)
-      Taro.showToast({ title: '登录失败', icon: 'none' })
-    }
+  const handleLogin = () => {
+    setShowNicknameInput(true)
   }
   
   const handleLogout = () => {
@@ -128,11 +114,11 @@ export default function Index() {
   const handleNicknameConfirm = () => {
     const name = nickname.trim() || `牌友${Math.floor(Math.random() * 100)}`
     const info = {
-      id: getUserId() || '',
+      id: getUserId(),
       nickname: name
     }
     saveUserInfo(info)
-    setUserInfo(info)
+    setUserInfo({ nickname: info.nickname })
     setShowNicknameInput(false)
     setNickname('')
     Taro.showToast({ title: `欢迎 ${info.nickname}`, icon: 'success' })
