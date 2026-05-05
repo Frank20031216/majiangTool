@@ -5,16 +5,24 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ArrowLeft, MapPin, Clock, Users, X, QrCode } from 'lucide-react-taro'
-import { getRoom, joinRoom, hasUserJoined, generateInviteLink, formatTime, getUserId, getUserInfo } from '@/lib/storage'
-import QRCodeModal from '@/components/qrcode-modal'
+import { ArrowLeft, MapPin, Clock, Users } from 'lucide-react-taro'
+import { getUserInfo, getUserId } from '@/lib/storage'
+import { Network } from '@/network'
+
+interface Member {
+  id: string
+  name: string
+  joined_at: string
+}
 
 interface RoomData {
   id: string
   location: string
-  startTime: string
-  endTime?: string
-  members: { id: string; name: string; joinedAt: number }[]
+  start_time: string
+  end_time?: string
+  creator_id: string
+  creator_name: string
+  members: Member[]
 }
 
 export default function RoomDetail() {
@@ -22,16 +30,12 @@ export default function RoomDetail() {
   const [room, setRoom] = useState<RoomData | null>(null)
   const [roomId, setRoomId] = useState('')
   const [hasJoined, setHasJoined] = useState(false)
-  const [isCreator, setIsCreator] = useState(false)
   const [showJoinConfirm, setShowJoinConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [showQRModal, setShowQRModal] = useState(false)
   
   useEffect(() => {
-    // 从路由参数获取房间ID
     const id = router.params.id || router.params.roomId
-    
     console.log('Room page params:', router.params)
     
     if (!id) {
@@ -43,80 +47,105 @@ export default function RoomDetail() {
     loadRoom(id)
   }, [])
   
-  const loadRoom = useCallback((id: string) => {
-    console.log('Loading room:', id)
-    const roomData = getRoom(id)
-    
-    if (!roomData) {
+  const loadRoom = useCallback(async (id: string) => {
+    try {
+      const res = await Network.request({ url: `/api/rooms/${id}` })
+      const data = res.data?.data
+      
+      if (!data) {
+        setError('房间不存在或已失效')
+        return
+      }
+      
+      const uid = getUserId()
+      setRoom(data)
+      setHasJoined(data.members?.some((m: Member) => m.id === uid) || false)
+      setError('')
+    } catch (err) {
+      console.error('获取房间失败:', err)
       setError('房间不存在或已失效')
-      return
     }
-    
-    setRoom(roomData)
-    setHasJoined(hasUserJoined(id))
-    setIsCreator(roomData.creatorId === getUserId())
-    setError('')
   }, [])
   
   const handleJoin = () => {
     setShowJoinConfirm(true)
   }
   
-  const confirmJoin = () => {
+  const confirmJoin = async () => {
     setLoading(true)
     setShowJoinConfirm(false)
     
-    // 获取用户昵称
     const userInfo = getUserInfo()
     if (!userInfo) {
-      Taro.showToast({ title: '请先在首页设置昵称', icon: 'none' })
+      Taro.showToast({ title: '请先设置昵称', icon: 'none' })
       setLoading(false)
       return
     }
     
-    const success = joinRoom(roomId, userInfo.nickname)
-    
-    if (success) {
+    try {
+      await Network.request({
+        url: '/api/rooms/join',
+        method: 'POST',
+        data: {
+          roomId,
+          memberName: userInfo.nickname,
+          memberId: userInfo.id
+        }
+      })
       Taro.showToast({ title: '加入成功', icon: 'success' })
-      setHasJoined(true)
-      // 刷新数据
-      setTimeout(() => loadRoom(roomId), 500)
-    } else {
+      await loadRoom(roomId)
+    } catch (err) {
+      console.error('加入房间失败:', err)
       Taro.showToast({ title: '加入失败', icon: 'none' })
+    } finally {
+      setLoading(false)
     }
-    
-    setLoading(false)
   }
   
-  const handleDecline = () => {
-    Taro.navigateBack()
+  const handleLeave = async () => {
+    const userInfo = getUserInfo()
+    if (!userInfo) return
+    
+    setLoading(true)
+    try {
+      await Network.request({
+        url: '/api/rooms/leave',
+        method: 'POST',
+        data: {
+          roomId,
+          memberId: userInfo.id
+        }
+      })
+      Taro.showToast({ title: '已退出房间', icon: 'success' })
+      await loadRoom(roomId)
+    } catch (err) {
+      console.error('退出房间失败:', err)
+      Taro.showToast({ title: '退出失败', icon: 'none' })
+    } finally {
+      setLoading(false)
+    }
   }
   
   const handleBack = () => {
     Taro.navigateBack()
   }
   
-  // 错误状态
   if (error) {
     return (
       <View className="min-h-screen bg-stone-50 flex flex-col">
-        <View className="bg-gradient-to-b from-red-800 to-red-700 pt-8 pb-6 px-4">
+        <View className="bg-gradient-to-b from-red-800 to-red-700 pt-12 pb-4 px-4">
           <View className="flex items-center">
-            <View onClick={handleBack} className="p-2 -ml-2">
+            <View onClick={handleBack} className="p-2">
               <ArrowLeft size={24} color="white" />
             </View>
-            <Text className="text-white text-lg font-medium ml-2">房间详情</Text>
+            <Text className="text-white text-lg font-medium flex-1 text-center pr-10">房间详情</Text>
           </View>
         </View>
-        
-        <View className="flex-1 flex flex-col items-center justify-center px-6">
-          <Text className="block text-gray-600 text-lg mb-4">{error}</Text>
-          <Button 
-            className="bg-red-700 text-white rounded-xl"
-            onClick={handleBack}
-          >
-            <Text className="text-white">返回首页</Text>
-          </Button>
+        <View className="flex-1 flex items-center justify-center p-8">
+          <View className="text-center">
+            <Text className="block text-gray-500 text-lg mb-4">{error}</Text>
+            <Button onClick={handleBack}>返回首页</Button>
+          </View>
         </View>
       </View>
     )
@@ -130,214 +159,153 @@ export default function RoomDetail() {
     )
   }
   
-  const isFull = room.members.length >= 4
+  const isFull = room.members?.length >= 4
   
   return (
     <View className="min-h-screen bg-stone-50 flex flex-col">
       {/* 顶部 */}
-      <View className="bg-gradient-to-b from-red-800 to-red-700 pt-8 pb-6 px-4">
-        <View className="flex items-center justify-between">
-          <View onClick={handleBack} className="p-2 -ml-2">
+      <View className="bg-gradient-to-b from-red-800 to-red-700 pt-12 pb-4 px-4">
+        <View className="flex items-center">
+          <View onClick={handleBack} className="p-2">
             <ArrowLeft size={24} color="white" />
           </View>
-          <Text className="text-white text-lg font-medium">房间详情</Text>
-          <View className="w-10" />
-        </View>
-        
-        {/* 房间号 */}
-        <View className="text-center mt-3">
-          <Text className="block text-amber-400 text-sm">房间号</Text>
-          <Text className="block text-white text-3xl font-bold tracking-widest">{room.id}</Text>
+          <Text className="text-white text-lg font-medium flex-1 text-center pr-10">房间详情</Text>
         </View>
       </View>
       
-      <View className="flex-1 px-4 py-5">
+      {/* 内容 */}
+      <View className="flex-1 px-4 py-6">
         {/* 房间信息卡片 */}
-        <Card className="shadow-md border-0 mb-4">
+        <Card className="mb-4">
           <CardContent className="p-5">
-            {/* 地点 */}
-            <View className="flex items-start mb-4">
-              <View className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mr-3">
-                <MapPin size={20} color="#B91C1C" />
-              </View>
-              <View className="flex-1">
-                <Text className="block text-gray-500 text-xs mb-1">约局地点</Text>
-                <Text className="block text-gray-800 text-lg font-semibold">{room.location}</Text>
-              </View>
+            {/* 房间号 */}
+            <View className="flex items-center justify-center mb-4 pb-4 border-b border-gray-100">
+              <Text className="text-amber-600 text-lg font-bold mr-2">房间号</Text>
+              <Text className="text-gray-800 text-2xl font-bold tracking-wider">{room.id}</Text>
             </View>
             
-            {/* 时间 */}
-            <View className="flex items-start mb-4">
-              <View className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center mr-3">
-                <Clock size={20} color="#D4AF37" />
-              </View>
-              <View className="flex-1">
-                <Text className="block text-gray-500 text-xs mb-1">开始时间</Text>
-                <Text className="block text-gray-800 font-medium">{formatTime(room.startTime)}</Text>
-                {room.endTime && (
-                  <Text className="block text-gray-500 text-sm mt-1">至 {formatTime(room.endTime)}</Text>
-                )}
-              </View>
+            {/* 地点 */}
+            <View className="flex items-center mb-3">
+              <MapPin size={18} color="#92400e" />
+              <Text className="block text-gray-700 ml-2 text-base">{room.location}</Text>
             </View>
+            
+            {/* 开始时间 */}
+            <View className="flex items-center mb-3">
+              <Clock size={18} color="#92400e" />
+              <Text className="block text-gray-700 ml-2 text-base">
+                开始：{room.start_time}
+              </Text>
+            </View>
+            
+            {/* 结束时间 */}
+            {room.end_time && (
+              <View className="flex items-center mb-3">
+                <Clock size={18} color="#92400e" />
+                <Text className="block text-gray-700 ml-2 text-base">
+                  结束：{room.end_time}
+                </Text>
+              </View>
+            )}
             
             {/* 人数 */}
-            <View className="flex items-start">
-              <View className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mr-3">
-                <Users size={20} color="#059669" />
-              </View>
-              <View className="flex-1">
-                <Text className="block text-gray-500 text-xs mb-1">当前人数</Text>
-                <View className="flex items-center gap-2">
-                  <Text className="block text-gray-800 font-semibold text-lg">
-                    {room.members.length}/4
-                  </Text>
-                  {isFull ? (
-                    <Badge variant="destructive" className="rounded-full">已满员</Badge>
-                  ) : (
-                    <Badge variant="secondary" className="bg-green-50 text-green-700 rounded-full">
-                      可加入
-                    </Badge>
-                  )}
-                </View>
-              </View>
+            <View className="flex items-center">
+              <Users size={18} color="#92400e" />
+              <Text className="block text-gray-700 ml-2 text-base">
+                {room.members?.length || 0}/4 人
+              </Text>
+              {isFull && (
+                <Badge variant="destructive" className="ml-2">
+                  已满
+                </Badge>
+              )}
             </View>
           </CardContent>
         </Card>
         
         {/* 成员列表 */}
-        <Card className="shadow-md border-0 mb-4">
+        <Card className="mb-4">
           <CardContent className="p-5">
-            <Text className="block text-gray-700 font-semibold mb-4">已加入成员</Text>
-            
-            <View className="space-y-3">
-              {room.members.map((member, index) => (
-                <View key={member.id} className="flex items-center relative">
-                  <Avatar className="w-10 h-10 bg-red-100 mr-3">
-                    <AvatarFallback className="bg-red-100 text-red-700 font-semibold">
-                      {member.name.slice(0, 1)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <View className="flex-1">
-                    <View className="flex items-center gap-2">
-                      <Text className="block text-gray-800 font-medium">{member.name}</Text>
-                      {index === 0 && (
-                        <Badge variant="outline" className="text-amber-600 border-amber-300 rounded-full text-xs">
-                          房主
-                        </Badge>
-                      )}
+            <Text className="block text-gray-800 font-semibold mb-4">已加入成员</Text>
+            {room.members?.length > 0 ? (
+              <View className="space-y-3">
+                {room.members.map((member, index) => (
+                  <View key={member.id || index} className="flex items-center p-3 bg-stone-50 rounded-xl">
+                    <Avatar className="w-10 h-10 bg-amber-100">
+                      <AvatarFallback className="text-amber-700 font-semibold">
+                        {member.name?.charAt(0) || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <View className="ml-3 flex-1">
+                      <Text className="block text-gray-800 font-medium">
+                        {member.name}
+                        {member.id === room.creator_id && (
+                          <Text className="text-amber-600 text-sm ml-1">(房主)</Text>
+                        )}
+                      </Text>
+                      <Text className="block text-gray-400 text-xs">
+                        {member.joined_at ? new Date(member.joined_at).toLocaleString() : ''}
+                      </Text>
                     </View>
-                    <Text className="block text-gray-400 text-xs">
-                      {new Date(member.joinedAt).toLocaleString('zh-CN', {
-                        month: 'numeric',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })} 加入
-                    </Text>
                   </View>
-                </View>
-              ))}
-            </View>
-          </CardContent>
-        </Card>
-        
-        {/* 邀约链接 */}
-        <Card className="shadow-md border-0 mb-5">
-          <CardContent className="p-4">
-            <View className="flex items-center justify-between">
-              <View className="flex-1">
-                <Text className="block text-gray-500 text-xs mb-1">邀约链接</Text>
-                <Text className="block text-gray-700 text-sm truncate">
-                  {generateInviteLink(roomId)}
-                </Text>
+                ))}
               </View>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="ml-3"
-                onClick={() => setShowQRModal(true)}
-              >
-                <QrCode size={18} color="#B91C1C" />
-              </Button>
-            </View>
+            ) : (
+              <Text className="block text-gray-400 text-center py-4">暂无成员</Text>
+            )}
           </CardContent>
         </Card>
         
         {/* 操作按钮 */}
-        {(!hasJoined && !isCreator) ? (
-          <View className="flex gap-3">
-            <View className="flex-1">
-              <Button 
-                variant="outline"
-                className="w-full border-gray-300 text-gray-600 hover:bg-gray-50 rounded-xl h-12"
-                onClick={handleDecline}
-              >
-                <View className="flex items-center">
-                  <X size={18} color="#6B7280" />
-                  <Text className="ml-1">拒绝加入</Text>
-                </View>
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button 
-                className="w-full bg-red-700 hover:bg-red-800 text-white rounded-xl h-12"
-                onClick={handleJoin}
-                disabled={isFull}
-              >
-                <Text className="text-white">加入约局</Text>
-              </Button>
-            </View>
-          </View>
-        ) : (
-          <View className="bg-green-50 rounded-xl p-4 text-center">
-            <Text className="block text-green-700 font-medium">
-              {isCreator ? '您是此房间的房主' : '您已成功加入此房间'}
-            </Text>
-          </View>
-        )}
+        <View className="mt-auto">
+          {!hasJoined && !isFull && (
+            <Button
+              className="w-full bg-red-700 hover:bg-red-800 text-white"
+              onClick={handleJoin}
+              disabled={loading}
+            >
+              <Text className="text-white">加入约局</Text>
+            </Button>
+          )}
+          
+          {hasJoined && (
+            <Button
+              variant="outline"
+              className="w-full border-red-300 text-red-700"
+              onClick={handleLeave}
+              disabled={loading}
+            >
+              <Text className="text-red-700">退出房间</Text>
+            </Button>
+          )}
+          
+          {isFull && !hasJoined && (
+            <Button className="w-full bg-gray-300 text-gray-500" disabled>
+              <Text className="text-gray-500">房间人数已满</Text>
+            </Button>
+          )}
+        </View>
       </View>
       
       {/* 加入确认弹窗 */}
       {showJoinConfirm && (
-        <View className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <Text className="block text-gray-800 text-lg font-semibold text-center mb-2">
-              确认加入
-            </Text>
-            <Text className="block text-gray-500 text-sm text-center mb-6">
-              确定要加入「{room.location}」的约局吗？
+        <View className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <View className="bg-white rounded-2xl w-full max-w-sm p-6">
+            <Text className="block text-xl font-bold text-gray-800 text-center mb-2">确认加入</Text>
+            <Text className="block text-gray-500 text-center mb-6">
+              确定要加入这个麻将约局吗？
             </Text>
             <View className="flex gap-3">
-              <View className="flex-1">
-                <Button 
-                  variant="outline"
-                  className="w-full border-gray-300 rounded-xl h-11"
-                  onClick={() => setShowJoinConfirm(false)}
-                >
-                  <Text>取消</Text>
-                </Button>
-              </View>
-              <View className="flex-1">
-                <Button 
-                  className="w-full bg-red-700 rounded-xl h-11"
-                  onClick={confirmJoin}
-                  disabled={loading}
-                >
-                  <Text className="text-white">{loading ? '加入中...' : '确认'}</Text>
-                </Button>
-              </View>
+              <Button variant="outline" className="flex-1" onClick={() => setShowJoinConfirm(false)}>
+                <Text>取消</Text>
+              </Button>
+              <Button className="flex-1 bg-red-700" onClick={confirmJoin}>
+                <Text className="text-white">确定</Text>
+              </Button>
             </View>
           </View>
         </View>
       )}
-      
-      {/* 二维码弹窗 */}
-      <QRCodeModal
-        show={showQRModal}
-        roomId={roomId}
-        roomName={room?.location}
-        onClose={() => setShowQRModal(false)}
-      />
     </View>
   )
 }

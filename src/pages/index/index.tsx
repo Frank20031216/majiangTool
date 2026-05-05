@@ -7,7 +7,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
-import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName, deleteRoom, logout } from '@/lib/storage'
+import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
+import { Network } from '@/network'
 import LinkModal from '@/components/link-modal'
 import {
   AlertDialog,
@@ -43,25 +44,29 @@ export default function Index() {
     loadData()
   }, [])
   
-  const loadData = () => {
+  const loadData = async () => {
     const info = getUserInfo()
     setUserInfo(info)
-    loadAllRooms()
+    await loadAllRooms()
   }
   
-  const loadAllRooms = () => {
-    const rooms = getAllRooms()
-    const uid = getUserId()
-    const sortedRooms = [...rooms].sort((a, b) => b.createdAt - a.createdAt)
-    setAllRooms(sortedRooms.map(r => ({
-      id: r.id,
-      location: r.location,
-      startTime: r.startTime,
-      creatorName: getCreatorName(r),
-      membersCount: r.members.length,
-      isFull: r.members.length >= 4,
-      isCreator: r.creatorId === uid
-    })))
+  const loadAllRooms = async () => {
+    try {
+      const res = await Network.request({ url: '/api/rooms' })
+      const rooms = res.data?.data || []
+      const uid = getUserId()
+      setAllRooms(rooms.map((r: any) => ({
+        id: r.id,
+        location: r.location,
+        startTime: r.start_time,
+        creatorName: r.creator_name || '未知',
+        membersCount: r.members?.length || 0,
+        isFull: (r.members?.length || 0) >= 4,
+        isCreator: r.creator_id === uid
+      })))
+    } catch (err) {
+      console.error('获取房间列表失败:', err)
+    }
   }
   
   const handleLogin = () => {
@@ -83,13 +88,17 @@ export default function Index() {
     setDeleteRoomId(roomId)
   }
   
-  const confirmDeleteRoom = () => {
+  const confirmDeleteRoom = async () => {
     if (deleteRoomId) {
-      const success = deleteRoom(deleteRoomId)
-      if (success) {
+      try {
+        await Network.request({
+          url: `/api/rooms/${deleteRoomId}`,
+          method: 'DELETE'
+        })
         Taro.showToast({ title: '房间已删除', icon: 'success' })
-        loadAllRooms()
-      } else {
+        await loadAllRooms()
+      } catch (err) {
+        console.error('删除房间失败:', err)
         Taro.showToast({ title: '删除失败', icon: 'none' })
       }
     }
