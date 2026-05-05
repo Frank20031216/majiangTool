@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
 import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
-import { wxLogin } from '@/lib/auth'
 import { Network } from '@/network'
 import LinkModal from '@/components/link-modal'
 import {
@@ -70,30 +69,8 @@ export default function Index() {
     }
   }
   
-  // 微信授权登录
-  const handleWxLogin = async () => {
-    setShowNicknameInput(false)
-    const user = await wxLogin()
-    if (user) {
-      setUserInfo({ nickname: user.nickname, avatar: user.avatar })
-      Taro.showToast({ title: `欢迎 ${user.nickname}`, icon: 'success' })
-    }
-  }
-  
   const handleLogin = () => {
-    // 显示选择弹窗：微信登录 or 快速登录
-    Taro.showActionSheet({
-      itemList: ['微信授权登录', '快速设置昵称'],
-      success: (res) => {
-        if (res.tapIndex === 0) {
-          // 微信授权登录
-          handleWxLogin()
-        } else {
-          // 快速登录
-          setShowNicknameInput(true)
-        }
-      }
-    })
+    setShowNicknameInput(true)
   }
   
   const handleLogout = () => {
