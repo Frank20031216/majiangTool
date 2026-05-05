@@ -95,7 +95,10 @@ export default function RoomDetail() {
         }
       })
       Taro.showToast({ title: '加入成功', icon: 'success' })
-      await loadRoom(roomId)
+      // 返回首页并刷新
+      setTimeout(() => {
+        Taro.switchTab({ url: '/pages/index/index' })
+      }, 1000)
     } catch (err) {
       console.error('加入房间失败:', err)
       Taro.showToast({ title: '加入失败', icon: 'none' })
@@ -119,7 +122,10 @@ export default function RoomDetail() {
         }
       })
       Taro.showToast({ title: '已退出房间', icon: 'success' })
-      await loadRoom(roomId)
+      // 返回首页并刷新
+      setTimeout(() => {
+        Taro.switchTab({ url: '/pages/index/index' })
+      }, 1000)
     } catch (err) {
       console.error('退出房间失败:', err)
       Taro.showToast({ title: '退出失败', icon: 'none' })

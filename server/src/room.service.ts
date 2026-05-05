@@ -53,11 +53,21 @@ export class RoomService {
     return data;
   }
 
+  private generateRoomCode(): string {
+    // 使用时间戳后6位 + 随机2位，格式如: 05051423
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    return timestamp + random;
+  }
+
   async createRoom(room: Omit<RoomData, 'id' | 'created_at'>): Promise<RoomData> {
+    // 使用时间戳生成房间号
+    const roomCode = this.generateRoomCode();
+
     const { data, error } = await this.supabase
       .from('rooms')
       .insert({
-        room_code: room.room_code,
+        room_code: roomCode,
         location: room.location,
         start_time: room.start_time,
         end_time: room.end_time,

@@ -10,16 +10,7 @@ import { generateInviteLink, getUserInfo } from '@/lib/storage'
 import { Network } from '@/network'
 
 export default function CreateRoom() {
-  const [location, setLocation] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [startTime, setStartTime] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [endTime, setEndTime] = useState('')
-  const [created, setCreated] = useState(false)
-  const [roomId, setRoomId] = useState('')
-  const [inviteLink, setInviteLink] = useState('')
-  const [loading, setLoading] = useState(false)
-  
+  // 获取默认日期（今天）
   const getDefaultDate = () => {
     const now = new Date()
     const year = now.getFullYear()
@@ -28,11 +19,22 @@ export default function CreateRoom() {
     return `${year}-${month}-${day}`
   }
   
+  // 获取默认时间（当前时间 + 1小时，向上取整）
   const getDefaultTime = () => {
     const now = new Date()
     const hours = String(now.getHours() + 1).padStart(2, '0')
     return `${hours}:00`
   }
+  
+  const [location, setLocation] = useState('')
+  const [startDate, setStartDate] = useState(getDefaultDate)
+  const [startTime, setStartTime] = useState(getDefaultTime)
+  const [endDate, setEndDate] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [created, setCreated] = useState(false)
+  const [roomId, setRoomId] = useState('')
+  const [inviteLink, setInviteLink] = useState('')
+  const [loading, setLoading] = useState(false)
   
   const handleCreate = async () => {
     if (!location.trim()) {
@@ -88,13 +90,15 @@ export default function CreateRoom() {
   }
   
   const handleViewRoom = () => {
-    Taro.redirectTo({ url: `/pages/room/index?id=${roomId}` })
+    // 返回首页并刷新
+    Taro.switchTab({ url: '/pages/index/index' })
   }
   
   const handleBack = () => {
-    Taro.navigateBack()
+    // 返回首页并刷新
+    Taro.switchTab({ url: '/pages/index/index' })
   }
-  
+
   // 创建成功页面
   if (created) {
     return (
