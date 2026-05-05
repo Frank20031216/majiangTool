@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from '@/app.module';
 import * as express from 'express';
 import { HttpStatusInterceptor } from '@/interceptors/http-status.interceptor';
-import { RoomService } from '@/room.service';
 
 function parsePort(): number {
   const args = process.argv.slice(2);
@@ -31,11 +30,6 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   const port = parsePort();
-
-  // 初始化永久房间
-  const roomService = app.get(RoomService);
-  await roomService.initPermanentRooms();
-  console.log('永久房间初始化完成');
 
   try {
     await app.listen(port);
