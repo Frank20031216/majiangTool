@@ -56,9 +56,10 @@ export default function CreateRoom() {
         method: 'POST',
         data: {
           location: location.trim(),
-          startTime: startDateTime,
-          endTime: endDateTime,
-          creatorName: getUserInfo()?.nickname || '房主'
+          start_time: startDateTime,
+          end_time: endDateTime,
+          creator_name: getUserInfo()?.nickname || '房主',
+          creator_id: getUserInfo()?.id || ''
         }
       })
       
