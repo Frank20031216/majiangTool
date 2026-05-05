@@ -35,9 +35,9 @@ export class UrlSchemeService {
       throw new Error(`获取 Access Token 失败: ${data.errmsg}`);
     }
 
-    this.accessToken = data.access_token;
+    this.accessToken = data.access_token || '';
     // 提前 5 分钟过期
-    this.accessTokenExpire = Date.now() + (data.expires_in - 300) * 1000;
+    this.accessTokenExpire = Date.now() + ((data.expires_in || 7200) - 300) * 1000;
 
     return this.accessToken;
   }
@@ -67,7 +67,7 @@ export class UrlSchemeService {
       throw new Error(`生成 URL Scheme 失败: ${data.errmsg}`);
     }
 
-    return data.openlink;
+    return data.openlink || '';
   }
 
   /**
