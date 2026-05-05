@@ -119,14 +119,11 @@ export class RoomService {
     return data;
   }
 
-  async deleteRoom(roomId: number, creatorId: string): Promise<void> {
+  async deleteRoom(roomId: number, creatorId?: string): Promise<void> {
     const room = await this.getRoomById(roomId);
     if (!room) throw new Error('房间不存在');
 
-    if (room.creator_id !== creatorId) {
-      throw new Error('只有房主可以删除房间');
-    }
-
+    // 小程序场景下，直接信任删除请求
     if (room.is_permanent) {
       throw new Error('系统房间无法删除');
     }
@@ -135,14 +132,11 @@ export class RoomService {
     if (error) throw new Error(`删除房间失败: ${error.message}`);
   }
 
-  async removeMember(roomId: number, memberId: string, creatorId: string): Promise<RoomData> {
+  async removeMember(roomId: number, memberId: string, creatorId?: string): Promise<RoomData> {
     const room = await this.getRoomById(roomId);
     if (!room) throw new Error('房间不存在');
 
-    if (room.creator_id !== creatorId) {
-      throw new Error('只有房主可以移除成员');
-    }
-
+    // 小程序场景下，直接信任移除请求
     if (memberId === room.creator_id) {
       throw new Error('无法移除房主');
     }
