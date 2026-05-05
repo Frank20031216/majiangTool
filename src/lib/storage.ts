@@ -178,14 +178,21 @@ export function generateInviteLink(roomId: string): string {
 }
 
 // 格式化时间
-export function formatTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+export function formatTime(dateStr: string | undefined | null): string {
+  if (!dateStr) return ''
+  try {
+    const date = new Date(dateStr)
+    const valid = Number.isNaN(date.getTime())
+    if (valid) return ''
+    return date.toLocaleString('zh-CN', {
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return ''
+  }
 }
 
 // 删除房间（房主操作）
