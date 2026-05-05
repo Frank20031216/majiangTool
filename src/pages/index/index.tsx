@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
-import { getUserInfo, saveUserInfo, getUserId, formatTime, logout, getRoomRefreshFlag, clearRoomRefreshFlag } from '@/lib/storage'
+import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
 import { Network } from '@/network'
 import LinkModal from '@/components/link-modal'
 import {
@@ -41,14 +41,14 @@ export default function Index() {
   const [deleteRoomId, setDeleteRoomId] = useState<string | null>(null)
   
   useEffect(() => {
+    loadData()
+  }, [])
+  
+  const loadData = async () => {
     const info = getUserInfo()
     setUserInfo(info)
-    // 检查是否有刷新标记
-    if (getRoomRefreshFlag()) {
-      clearRoomRefreshFlag()
-      loadAllRooms()
-    }
-  }, [])
+    await loadAllRooms()
+  }
   
   const loadAllRooms = async () => {
     try {

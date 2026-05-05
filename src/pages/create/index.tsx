@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, MapPin, Clock, Calendar, Check } from 'lucide-react-taro'
-import { generateInviteLink, getUserInfo, setRoomRefreshFlag } from '@/lib/storage'
+import { generateInviteLink, getUserInfo } from '@/lib/storage'
 import { Network } from '@/network'
 
 export default function CreateRoom() {
@@ -73,7 +73,6 @@ export default function CreateRoom() {
       console.log('创建房间成功，返回数据:', res.data)
       setRoomId(newRoom.id)
       setInviteLink(generateInviteLink(newRoom.id))
-      setRoomRefreshFlag() // 设置刷新标记，首页会自动刷新
       setCreated(true)
     } catch (e) {
       Taro.showToast({ title: '创建失败', icon: 'none' })
