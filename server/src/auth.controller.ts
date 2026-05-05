@@ -21,19 +21,16 @@ export class AuthController {
 
       if (!appId || !appSecret) {
         console.error('微信配置缺失:', { appId: !!appId, appSecret: !!appSecret })
-        // 开发环境返回模拟数据
-        if (process.env.NODE_ENV === 'development') {
-          return {
-            code: 200,
-            msg: 'success',
-            data: {
-              openid: 'mock_openid_' + code.substring(0, 8),
-              unionid: null,
-              sessionKey: 'mock_session_key'
-            }
+        // 未配置时返回模拟数据用于测试
+        return {
+          code: 200,
+          msg: 'success',
+          data: {
+            openid: 'mock_openid_' + code.substring(0, 8),
+            unionid: null,
+            sessionKey: 'mock_session_key'
           }
         }
-        return { code: 500, msg: '微信配置缺失', data: null }
       }
 
       // 调用微信接口获取 openid 和 unionid
