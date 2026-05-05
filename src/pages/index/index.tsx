@@ -70,16 +70,7 @@ export default function Index() {
   }
   
   const handleLogin = () => {
-    Taro.getUserProfile({
-      desc: '用于完善用户资料',
-      success: (res) => {
-        console.log('用户信息：', res.userInfo)
-        setNickname(res.userInfo.nickName)
-      },
-      fail: (err) => {
-        console.error('获取用户信息失败：', err)
-      }
-    })
+    setShowNicknameInput(true)
   }
   
   const handleLogout = () => {
