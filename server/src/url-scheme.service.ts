@@ -19,7 +19,7 @@ export class UrlSchemeService {
   private async getAccessToken(): Promise<string> {
     // 如果已有有效的 token，直接返回
     if (this.accessToken && Date.now() < this.accessTokenExpire) {
-      return this.accessToken;
+      return this.accessToken!;
     }
 
     if (!this.appId || !this.appSecret) {
@@ -39,7 +39,7 @@ export class UrlSchemeService {
     // 提前 5 分钟过期
     this.accessTokenExpire = Date.now() + ((data.expires_in || 7200) - 300) * 1000;
 
-    return this.accessToken;
+    return this.accessToken ?? '';
   }
 
   /**
