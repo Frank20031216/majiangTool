@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
-import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
+import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/auth'
 import { Network } from '@/network'
 import LinkModal from '@/components/link-modal'
 import {
@@ -32,7 +32,7 @@ interface RoomPreview {
 
 export default function Index() {
   const [allRooms, setAllRooms] = useState<(RoomPreview & { isCreator: boolean })[]>([])
-  const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
+  const [userInfo, setUserInfo] = useState<{ id: string; nickname: string; avatar: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
   const [showQRModal, setShowQRModal] = useState(false)
@@ -69,8 +69,58 @@ export default function Index() {
     }
   }
   
-  const handleLogin = () => {
-    setShowNicknameInput(true)
+  const handleLogin = async () => {
+    // 已登录，点击修改昵称
+    if (userInfo) {
+      setShowNicknameInput(true)
+      setNickname(userInfo.nickname)
+      return
+    }
+    
+    // 未登录，使用微信授权登录
+    try {
+      // 1. 调用 wx.login 获取临时登录凭证 code
+      const loginRes = await Taro.login()
+      if (!loginRes.code) {
+        throw new Error('获取登录凭证失败')
+      }
+      
+      // 2. 后端通过 code 获取用户标识
+      const res = await Network.request({
+        url: '/api/auth/login',
+        method: 'POST',
+        data: { code: loginRes.code }
+      })
+
+      if (res.data.code !== 200) {
+        throw new Error(res.data.msg || '后端登录失败')
+      }
+
+      const { openid, unionid } = res.data.data
+      const userId = unionid || openid
+
+      // 3. 使用 wx.getUserProfile 获取用户信息（昵称、头像）
+      const profileRes = await Taro.getUserProfile({
+        desc: '用于完善会员资料'
+      })
+
+      const newUserInfo = {
+        id: userId,
+        nickname: profileRes.userInfo.nickName,
+        avatar: profileRes.userInfo.avatarUrl
+      }
+
+      saveUserInfo(newUserInfo)
+      setUserInfo(newUserInfo)
+      Taro.showToast({ title: `欢迎 ${newUserInfo.nickname}`, icon: 'success' })
+    } catch (err: any) {
+      console.error('微信登录失败:', err)
+      if (err.errMsg && err.errMsg.includes('auth deny')) {
+        Taro.showToast({ title: '用户拒绝授权', icon: 'none' })
+      } else {
+        Taro.showToast({ title: '授权失败，请重试', icon: 'none' })
+      }
+    }
   }
   
   const handleLogout = () => {
@@ -115,10 +165,11 @@ export default function Index() {
     const name = nickname.trim() || `牌友${Math.floor(Math.random() * 100)}`
     const info = {
       id: getUserId(),
-      nickname: name
+      nickname: name,
+      avatar: ''
     }
     saveUserInfo(info)
-    setUserInfo({ nickname: info.nickname })
+    setUserInfo({ ...info, avatar: info.avatar || '' })
     setShowNicknameInput(false)
     setNickname('')
     Taro.showToast({ title: `欢迎 ${info.nickname}`, icon: 'success' })
