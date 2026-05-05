@@ -7,7 +7,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
-import { getAllRooms, getUserInfo, saveUserInfo, getUserId, formatTime, getCreatorName, deleteRoom, logout } from '@/lib/storage'
+import {
+  fetchAllRooms,
+  getUserInfo,
+  saveUserInfo,
+  getUserId,
+  formatTime,
+  apiDeleteRoom,
+  logout,
+  isRoomCreator,
+  Room
+} from '@/lib/storage'
 import LinkModal from '@/components/link-modal'
 import {
   AlertDialog,
@@ -20,48 +30,32 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
 
-interface RoomPreview {
-  id: string
-  location: string
-  startTime: string
-  creatorName: string
-  membersCount: number
-  isFull: boolean
-}
-
 export default function Index() {
-  const [allRooms, setAllRooms] = useState<(RoomPreview & { isCreator: boolean })[]>([])
+  const [allRooms, setAllRooms] = useState<Room[]>([])
   const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
   const [showQRModal, setShowQRModal] = useState(false)
-  const [currentQRRoom, setCurrentQRRoom] = useState<RoomPreview | null>(null)
+  const [currentQRRoom, setCurrentQRRoom] = useState<Room | null>(null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [deleteRoomId, setDeleteRoomId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   
   useEffect(() => {
     loadData()
   }, [])
   
-  const loadData = () => {
+  const loadData = async () => {
+    setLoading(true)
     const info = getUserInfo()
     setUserInfo(info)
-    loadAllRooms()
+    await loadAllRooms()
+    setLoading(false)
   }
   
-  const loadAllRooms = () => {
-    const rooms = getAllRooms()
-    const uid = getUserId()
-    const sortedRooms = [...rooms].sort((a, b) => b.createdAt - a.createdAt)
-    setAllRooms(sortedRooms.map(r => ({
-      id: r.id,
-      location: r.location,
-      startTime: r.startTime,
-      creatorName: getCreatorName(r),
-      membersCount: r.members.length,
-      isFull: r.members.length >= 4,
-      isCreator: r.creatorId === uid
-    })))
+  const loadAllRooms = async () => {
+    const rooms = await fetchAllRooms()
+    setAllRooms(rooms)
   }
   
   const handleLogin = () => {
@@ -83,14 +77,14 @@ export default function Index() {
     setDeleteRoomId(roomId)
   }
   
-  const confirmDeleteRoom = () => {
+  const confirmDeleteRoom = async () => {
     if (deleteRoomId) {
-      const success = deleteRoom(deleteRoomId)
-      if (success) {
+      const result = await apiDeleteRoom(deleteRoomId)
+      if (result.success) {
         Taro.showToast({ title: '房间已删除', icon: 'success' })
-        loadAllRooms()
+        await loadAllRooms()
       } else {
-        Taro.showToast({ title: '删除失败', icon: 'none' })
+        Taro.showToast({ title: result.message, icon: 'none' })
       }
     }
     setDeleteRoomId(null)
@@ -126,13 +120,13 @@ export default function Index() {
     Taro.navigateTo({ url: `/pages/room/index?id=${roomId}` })
   }
   
-  const handleShowQRCode = (room: RoomPreview) => {
+  const handleShowQRCode = (room: Room) => {
     setCurrentQRRoom(room)
     setShowQRModal(true)
   }
   
-  const refreshRooms = () => {
-    loadAllRooms()
+  const refreshRooms = async () => {
+    await loadAllRooms()
     Taro.showToast({ title: '已刷新', icon: 'none' })
   }
   
@@ -229,7 +223,13 @@ export default function Index() {
             </Badge>
           </View>
           
-          {allRooms.length === 0 ? (
+          {loading ? (
+            <Card className="shadow-sm border-0">
+              <CardContent className="p-8 text-center">
+                <Text className="block text-gray-400 text-sm">加载中...</Text>
+              </CardContent>
+            </Card>
+          ) : allRooms.length === 0 ? (
             <Card className="shadow-sm border-0">
               <CardContent className="p-8 text-center">
                 <Text className="block text-gray-400 text-sm">暂无约局</Text>
@@ -237,100 +237,110 @@ export default function Index() {
               </CardContent>
             </Card>
           ) : (
-            allRooms.map(room => (
-              <Card 
-                key={room.id} 
-                className="shadow-sm border-0 mb-2"
-              >
-                <CardContent className="p-4">
-                  <View onClick={() => handleEnterRoom(room.id)}>
-                    <View className="flex items-start justify-between mb-2">
-                      <View className="flex items-center gap-2">
-                        <Text className="block text-gray-800 font-medium">{room.location}</Text>
-                        {room.isFull && (
-                          <Badge variant="destructive" className="rounded-full text-xs">
-                            已满
+            allRooms.map(room => {
+              const isFull = room.members.length >= 4
+              const creatorIsMe = isRoomCreator(room)
+              
+              return (
+                <Card 
+                  key={room.id} 
+                  className="shadow-sm border-0 mb-2"
+                >
+                  <CardContent className="p-4">
+                    <View onClick={() => handleEnterRoom(room.id)}>
+                      <View className="flex items-start justify-between mb-2">
+                        <View className="flex items-center gap-2">
+                          <Text className="block text-gray-800 font-medium">{room.location}</Text>
+                          {isFull && (
+                            <Badge variant="destructive" className="rounded-full text-xs">
+                              已满
+                            </Badge>
+                          )}
+                          {creatorIsMe && (
+                            <Badge variant="outline" className="border-amber-400 text-amber-600 rounded-full text-xs">
+                              房主
+                            </Badge>
+                          )}
+                          {room.isPermanent && (
+                            <Badge variant="outline" className="border-blue-400 text-blue-600 rounded-full text-xs">
+                              固定
+                            </Badge>
+                          )}
+                        </View>
+                        <View className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-gray-500 border-gray-300 rounded-lg text-xs">
+                            #{room.id}
                           </Badge>
-                        )}
-                        {room.isCreator && (
-                          <Badge variant="outline" className="border-amber-400 text-amber-600 rounded-full text-xs">
-                            房主
-                          </Badge>
-                        )}
+                        </View>
                       </View>
-                      <View className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-gray-500 border-gray-300 rounded-lg text-xs">
-                          #{room.id}
-                        </Badge>
+                      
+                      <View className="flex items-center gap-2 mb-2">
+                        <Clock size={12} color="#9CA3AF" />
+                        <Text className="block text-gray-500 text-sm">{formatTime(room.startTime)}</Text>
+                      </View>
+                      <View className="flex items-center gap-2 mb-2">
+                        <User size={12} color="#9CA3AF" />
+                        <Text className="block text-gray-500 text-sm">发局人: {room.creatorName}</Text>
+                      </View>
+                      <View className="flex items-center justify-between">
+                        <View className="flex items-center gap-2">
+                          <Users size={12} color="#9CA3AF" />
+                          <Text className="block text-gray-500 text-sm">
+                            {room.members.length}/4人
+                          </Text>
+                        </View>
                       </View>
                     </View>
                     
-                    <View className="flex items-center gap-2 mb-2">
-                      <Clock size={12} color="#9CA3AF" />
-                      <Text className="block text-gray-500 text-sm">{formatTime(room.startTime)}</Text>
-                    </View>
-                    <View className="flex items-center gap-2 mb-2">
-                      <User size={12} color="#9CA3AF" />
-                      <Text className="block text-gray-500 text-sm">发局人: {room.creatorName}</Text>
-                    </View>
-                    <View className="flex items-center justify-between">
-                      <View className="flex items-center gap-2">
-                        <Users size={12} color="#9CA3AF" />
-                        <Text className="block text-gray-500 text-sm">
-                          {room.membersCount}/4人
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  
-                  {/* 操作按钮 */}
-                  <View className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                    {room.isCreator && (
-                      <View className="flex-shrink-0">
+                    {/* 操作按钮 */}
+                    <View className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                      {creatorIsMe && (
+                        <View className="flex-shrink-0">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-gray-300 text-gray-600 rounded-lg h-8 px-3"
+                            onClick={(e) => {
+                              e.stopPropagation?.()
+                              handleDeleteRoom(room.id)
+                            }}
+                          >
+                            <Trash2 size={12} color="#6B7280" />
+                          </Button>
+                        </View>
+                      )}
+                      <View className="flex-1">
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          className="border-gray-300 text-gray-600 rounded-lg h-8 px-3"
-                          onClick={(e) => {
-                            e.stopPropagation?.()
-                            handleDeleteRoom(room.id)
-                          }}
+                          className="w-full border-red-200 text-red-700 rounded-lg h-8"
+                          onClick={() => handleShowQRCode(room)}
                         >
-                          <Trash2 size={12} color="#6B7280" />
+                          <QrCode size={12} color="#B91C1C" />
+                          <Text className="text-red-700 ml-1 text-xs">邀请链接</Text>
                         </Button>
                       </View>
-                    )}
-                    <View className="flex-1">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="w-full border-red-200 text-red-700 rounded-lg h-8"
-                        onClick={() => handleShowQRCode(room)}
-                      >
-                        <QrCode size={12} color="#B91C1C" />
-                        <Text className="text-red-700 ml-1 text-xs">邀请链接</Text>
-                      </Button>
+                      <View className="flex-1">
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-red-700 rounded-lg h-8"
+                          onClick={() => handleEnterRoom(room.id)}
+                        >
+                          <Text className="text-white text-xs">进入房间</Text>
+                        </Button>
+                      </View>
                     </View>
-                    <View className="flex-1">
-                      <Button 
-                        size="sm" 
-                        className="w-full bg-red-700 rounded-lg h-8"
-                        onClick={() => handleEnterRoom(room.id)}
-                      >
-                        <Text className="text-white text-xs">进入房间</Text>
-                      </Button>
-                    </View>
-                  </View>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              )
+            })
           )}
         </View>
         
         {/* 底部说明 */}
         <View className="text-center py-6">
           <Text className="block text-gray-400 text-xs">
-            数据仅保存在本地 · 刷新不丢失
+            所有约局数据公开可见
           </Text>
         </View>
       </View>

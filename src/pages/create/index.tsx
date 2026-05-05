@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, MapPin, Clock, Calendar, Check } from 'lucide-react-taro'
-import { createRoom, generateInviteLink } from '@/lib/storage'
+import { apiCreateRoom, generateInviteLink } from '@/lib/storage'
 
 export default function CreateRoom() {
   const [location, setLocation] = useState('')
@@ -49,11 +49,15 @@ export default function CreateRoom() {
       const startDateTime = `${startDate} ${startTime}`
       const endDateTime = endDate && endTime ? `${endDate} ${endTime}` : undefined
       
-      const room = createRoom(location.trim(), startDateTime, endDateTime)
+      const room = await apiCreateRoom(location.trim(), startDateTime, endDateTime)
       
-      setRoomId(room.id)
-      setInviteLink(generateInviteLink(room.id))
-      setCreated(true)
+      if (room) {
+        setRoomId(room.id)
+        setInviteLink(generateInviteLink(room.id))
+        setCreated(true)
+      } else {
+        Taro.showToast({ title: '创建失败，请重试', icon: 'none' })
+      }
     } catch (e) {
       Taro.showToast({ title: '创建失败', icon: 'none' })
     } finally {
