@@ -282,7 +282,7 @@ export default function Index() {
                     
                     <View className="flex items-center gap-2 mb-2">
                       <Clock size={12} color="#9CA3AF" />
-                      <Text className="block text-gray-500 text-sm">{formatTime(room.start_time)}</Text>
+                      <Text className="block text-gray-500 text-sm">{formatTime(room.startTime)}</Text>
                     </View>
                     <View className="flex items-center gap-2 mb-2">
                       <User size={12} color="#9CA3AF" />
