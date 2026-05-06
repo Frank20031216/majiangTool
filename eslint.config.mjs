@@ -165,6 +165,7 @@ const pageRestrictedSyntaxRules = [
   },
 ];
 
+// 单独配置 index 页面，允许使用原生 Button（用于获取手机号）
 const indexPageRestrictedSyntaxRules = [
   {
     selector: 'JSXText[value=/\\s*应用开发中\\s*/]',
@@ -172,6 +173,11 @@ const indexPageRestrictedSyntaxRules = [
       '工程规范：检测到首页 (src/pages/index/index.tsx) 仍为默认占位页面，这会导致用户无法进入新增页面，请根据用户需求开发实际的首页功能与界面。如果已经开发了新的首页，也需要删除旧首页，并更新 src/app.config.ts 文件',
   },
 ];
+
+// 为 index 页面禁用 Button 限制（获取手机号需要原生 Button）
+const indexPageDisabledRules = {
+  'no-restricted-syntax': 'off',
+};
 
 export default [
   ...compat.extends('taro/react'),
@@ -240,7 +246,6 @@ export default [
       'no-restricted-syntax': [
         'error',
         ...baseRestrictedSyntaxRules,
-        ...pageRestrictedSyntaxRules,
         ...indexPageRestrictedSyntaxRules,
       ],
     },

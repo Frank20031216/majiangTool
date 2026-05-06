@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text } from '@tarojs/components'
+import { View, Text, Button as TaroButton } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
 import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
 import { Network } from '@/network'
+import { wxLogin } from '@/lib/auth'
 import LinkModal from '@/components/link-modal'
 import {
   AlertDialog,
@@ -32,7 +33,7 @@ interface RoomPreview {
 
 export default function Index() {
   const [allRooms, setAllRooms] = useState<(RoomPreview & { isCreator: boolean })[]>([])
-  const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
+  const [userInfo, setUserInfo] = useState<{ nickname: string; phone?: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
   const [showQRModal, setShowQRModal] = useState(false)
@@ -69,8 +70,41 @@ export default function Index() {
     }
   }
   
-  const handleLogin = () => {
-    setShowNicknameInput(true)
+  const handleLogin = async () => {
+    // 先获取用户信息（昵称、头像）
+    const loginInfo = await wxLogin()
+    if (loginInfo) {
+      setUserInfo(loginInfo)
+    }
+  }
+
+  // 处理手机号获取
+  const handleGetPhone = async (e: any) => {
+    if (e.detail?.code) {
+      try {
+        const res = await Network.request({
+          url: '/api/auth/decrypt-phone',
+          method: 'POST',
+          data: { code: e.detail.code }
+        })
+        if (res.data?.data?.phoneNumber) {
+          const phone = res.data.data.phoneNumber
+          // 更新用户信息，保存手机号
+          const currentUser = getUserInfo()
+          if (currentUser) {
+            const updatedUser = { ...currentUser, phone }
+            saveUserInfo(updatedUser)
+            setUserInfo(updatedUser)
+            Taro.showToast({ title: '手机号绑定成功', icon: 'success' })
+          }
+        }
+      } catch (err) {
+        console.error('获取手机号失败:', err)
+        Taro.showToast({ title: '获取手机号失败', icon: 'none' })
+      }
+    } else {
+      Taro.showToast({ title: '请允许获取手机号', icon: 'none' })
+    }
   }
   
   const handleLogout = () => {
@@ -181,6 +215,19 @@ export default function Index() {
                 <LogIn size={14} color="#fff" />
                 <Text className="text-white ml-1 text-sm">登录</Text>
               </Button>
+            )}
+            {/* 手机号获取按钮（已登录但未绑定手机号时显示） */}
+            {userInfo && !userInfo.phone && (
+              <View>
+                <TaroButton
+                  size="mini"
+                  className="bg-green-500 text-white rounded-full border-0"
+                  openType="getPhoneNumber"
+                  onGetPhoneNumber={handleGetPhone}
+                >
+                  <Text className="text-white text-xs">绑定手机号</Text>
+                </TaroButton>
+              </View>
             )}
           </View>
           <View className="flex items-center gap-2">
