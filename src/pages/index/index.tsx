@@ -9,7 +9,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
 import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
 import { Network } from '@/network'
-import { wxLogin } from '@/lib/auth'
 import LinkModal from '@/components/link-modal'
 import {
   AlertDialog,
@@ -33,7 +32,7 @@ interface RoomPreview {
 
 export default function Index() {
   const [allRooms, setAllRooms] = useState<(RoomPreview & { isCreator: boolean })[]>([])
-  const [userInfo, setUserInfo] = useState<{ nickname: string; phone?: string } | null>(null)
+  const [userInfo, setUserInfo] = useState<{ id?: string; nickname: string; avatar?: string; phone?: string; openid?: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
   const [showQRModal, setShowQRModal] = useState(false)
@@ -70,14 +69,70 @@ export default function Index() {
     }
   }
   
-  const handleLogin = async () => {
-    // 先获取用户信息（昵称、头像）
-    const loginInfo = await wxLogin()
-    if (loginInfo) {
-      setUserInfo(loginInfo)
-    }
+  // 微信授权登录（必须在点击事件中直接调用）
+  const handleWechatAuth = () => {
+    // 获取微信用户信息
+    Taro.getUserProfile({
+      desc: '用于完善会员资料',
+      success: async (res) => {
+        console.log('微信用户信息:', res.userInfo)
+        const { nickName, avatarUrl } = res.userInfo
+        
+        // 获取登录凭证
+        const loginRes = await Taro.login()
+        if (loginRes.code) {
+          try {
+            // 发送到后端获取 openid
+            const result = await Network.request({
+              url: '/api/auth/login',
+              method: 'POST',
+              data: {
+                code: loginRes.code,
+                nickname: nickName,
+                avatar: avatarUrl
+              }
+            })
+            
+            if (result.data?.data) {
+              const userData = result.data.data
+              const user = {
+                id: userData.id || userData.openid,
+                nickname: nickName,
+                avatar: avatarUrl,
+                openid: userData.openid,
+                phone: userData.phone
+              }
+              saveUserInfo(user)
+              setUserInfo(user)
+            }
+          } catch (err) {
+            console.error('登录失败:', err)
+            // 即使后端失败，也保存本地用户信息
+            const localId = 'user_' + Date.now()
+            const user = {
+              id: localId,
+              nickname: nickName,
+              avatar: avatarUrl,
+              openid: undefined,
+              phone: undefined
+            }
+            saveUserInfo(user)
+            setUserInfo(user)
+          }
+        }
+      },
+      fail: (err) => {
+        console.error('用户拒绝授权:', err)
+        Taro.showToast({ title: '请允许授权登录', icon: 'none' })
+      }
+    })
   }
-
+  
+  // 手动输入昵称登录
+  const handleLogin = async () => {
+    setShowNicknameInput(true)
+  }
+  
   // 处理手机号获取
   const handleGetPhone = async (e: any) => {
     if (e.detail?.code) {
@@ -210,7 +265,7 @@ export default function Index() {
               <Button 
                 size="sm"
                 className="bg-white bg-opacity-20 hover:bg-white bg-opacity-30 text-white rounded-full border-0"
-                onClick={handleLogin}
+                onClick={handleWechatAuth}
               >
                 <LogIn size={14} color="#fff" />
                 <Text className="text-white ml-1 text-sm">登录</Text>
