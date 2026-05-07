@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text, Button as TaroButton } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -32,7 +32,7 @@ interface RoomPreview {
 
 export default function Index() {
   const [allRooms, setAllRooms] = useState<(RoomPreview & { isCreator: boolean })[]>([])
-  const [userInfo, setUserInfo] = useState<{ id?: string; nickname: string; avatar?: string; phone?: string; openid?: string } | null>(null)
+  const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
   const [showNicknameInput, setShowNicknameInput] = useState(false)
   const [nickname, setNickname] = useState('')
   const [showQRModal, setShowQRModal] = useState(false)
@@ -69,97 +69,8 @@ export default function Index() {
     }
   }
   
-  // 微信授权登录（必须在点击事件中直接调用）
-  const handleWechatAuth = () => {
-    // 获取微信用户信息
-    Taro.getUserProfile({
-      desc: '用于完善会员资料',
-      success: async (res) => {
-        console.log('微信用户信息:', res.userInfo)
-        const { nickName, avatarUrl } = res.userInfo
-        
-        // 获取登录凭证
-        const loginRes = await Taro.login()
-        if (loginRes.code) {
-          try {
-            // 发送到后端获取 openid
-            const result = await Network.request({
-              url: '/api/auth/login',
-              method: 'POST',
-              data: {
-                code: loginRes.code,
-                nickname: nickName,
-                avatar: avatarUrl
-              }
-            })
-            
-            if (result.data?.data) {
-              const userData = result.data.data
-              const user = {
-                id: userData.id || userData.openid,
-                nickname: nickName,
-                avatar: avatarUrl,
-                openid: userData.openid,
-                phone: userData.phone
-              }
-              saveUserInfo(user)
-              setUserInfo(user)
-            }
-          } catch (err) {
-            console.error('登录失败:', err)
-            // 即使后端失败，也保存本地用户信息
-            const localId = 'user_' + Date.now()
-            const user = {
-              id: localId,
-              nickname: nickName,
-              avatar: avatarUrl,
-              openid: undefined,
-              phone: undefined
-            }
-            saveUserInfo(user)
-            setUserInfo(user)
-          }
-        }
-      },
-      fail: (err) => {
-        console.error('用户拒绝授权:', err)
-        Taro.showToast({ title: '请允许授权登录', icon: 'none' })
-      }
-    })
-  }
-  
-  // 手动输入昵称登录
-  const handleLogin = async () => {
+  const handleLogin = () => {
     setShowNicknameInput(true)
-  }
-  
-  // 处理手机号获取
-  const handleGetPhone = async (e: any) => {
-    if (e.detail?.code) {
-      try {
-        const res = await Network.request({
-          url: '/api/auth/decrypt-phone',
-          method: 'POST',
-          data: { code: e.detail.code }
-        })
-        if (res.data?.data?.phoneNumber) {
-          const phone = res.data.data.phoneNumber
-          // 更新用户信息，保存手机号
-          const currentUser = getUserInfo()
-          if (currentUser) {
-            const updatedUser = { ...currentUser, phone }
-            saveUserInfo(updatedUser)
-            setUserInfo(updatedUser)
-            Taro.showToast({ title: '手机号绑定成功', icon: 'success' })
-          }
-        }
-      } catch (err) {
-        console.error('获取手机号失败:', err)
-        Taro.showToast({ title: '获取手机号失败', icon: 'none' })
-      }
-    } else {
-      Taro.showToast({ title: '请允许获取手机号', icon: 'none' })
-    }
   }
   
   const handleLogout = () => {
@@ -265,24 +176,11 @@ export default function Index() {
               <Button 
                 size="sm"
                 className="bg-white bg-opacity-20 hover:bg-white bg-opacity-30 text-white rounded-full border-0"
-                onClick={handleWechatAuth}
+                onClick={handleLogin}
               >
                 <LogIn size={14} color="#fff" />
                 <Text className="text-white ml-1 text-sm">登录</Text>
               </Button>
-            )}
-            {/* 手机号获取按钮（已登录但未绑定手机号时显示） */}
-            {userInfo && !userInfo.phone && (
-              <View>
-                <TaroButton
-                  size="mini"
-                  className="bg-green-500 text-white rounded-full border-0"
-                  openType="getPhoneNumber"
-                  onGetPhoneNumber={handleGetPhone}
-                >
-                  <Text className="text-white text-xs">绑定手机号</Text>
-                </TaroButton>
-              </View>
             )}
           </View>
           <View className="flex items-center gap-2">
