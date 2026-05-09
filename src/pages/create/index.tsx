@@ -92,12 +92,12 @@ export default function CreateRoom() {
   
   const handleViewRoom = () => {
     // 返回首页并刷新
-    Taro.switchTab({ url: '/pages/index/index' })
+    Taro.navigateTo({ url: '/pages/index/index' })
   }
   
   const handleBack = () => {
     // 返回首页并刷新
-    Taro.switchTab({ url: '/pages/index/index' })
+    Taro.navigateTo({ url: '/pages/index/index' })
   }
 
   // 创建成功页面
