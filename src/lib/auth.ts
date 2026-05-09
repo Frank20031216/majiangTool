@@ -94,7 +94,7 @@ export async function getUserInfo(openid: string): Promise<UserInfo> {
     method: 'GET',
   })
   
-  const result = res.data.user
+  const result = res.data
   return result
 }
 

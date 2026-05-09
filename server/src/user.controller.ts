@@ -72,7 +72,7 @@ export class UserController {
       if (!user) {
         return { code: 404, msg: '用户不存在', data: null };
       }
-      return { code: 200, msg: '获取成功', data: {user} };
+      return { code: 200, msg: '获取成功', data: user };
     } catch (err) {
       return { code: 500, msg: err.message, data: null };
     }
