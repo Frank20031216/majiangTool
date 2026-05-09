@@ -3,21 +3,25 @@ import Taro from "@tarojs/taro"
 import { useState } from "react"
 import { Network } from "@/network"
 
+interface Room {
+  id: string
+  location: string
+}
+
 interface LinkModalProps {
   show: boolean
-  roomId: string
-  roomName?: string
+  room: Room
   onClose: () => void
 }
 
-export default function LinkModal({ show, roomId, roomName, onClose }: LinkModalProps) {
+export default function LinkModal({ show, room, onClose }: LinkModalProps) {
   const [urlScheme, setUrlScheme] = useState<string>("")
   const [loading, setLoading] = useState(false)
 
   if (!show) return null
 
   // 小程序页面路径
-  const miniPagePath = `/pages/room/index?id=${roomId}`
+  const miniPagePath = `/pages/room/index?id=${room.id}`
 
   // 生成 URL Scheme
   const handleGenerateUrlScheme = async () => {
@@ -91,15 +95,15 @@ export default function LinkModal({ show, roomId, roomName, onClose }: LinkModal
       >
         {/* 标题 */}
         <Text className="block text-lg font-bold text-gray-800 mb-1">邀请加入约局</Text>
-        {roomName && (
-          <Text className="block text-sm text-gray-500 mb-4">{roomName}</Text>
+        {room.location && (
+          <Text className="block text-sm text-gray-500 mb-4">{room.location}</Text>
         )}
         
         {/* 房间号 */}
         <View className="bg-red-50 rounded-xl px-6 py-3 mb-4">
           <Text className="block text-sm text-red-600 mb-1 text-center">房间号</Text>
           <Text className="block text-3xl font-bold text-red-700 tracking-widest text-center">
-            {roomId}
+            {room.id}
           </Text>
         </View>
 

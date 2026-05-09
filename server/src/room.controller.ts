@@ -1,14 +1,30 @@
 import { Controller, Get, Post, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
-import { RoomService, Member } from '@/room.service';
+import { RoomService, Member, Room } from '@/room.service';
 
 @Controller('rooms')
 export class RoomController {
   constructor(private readonly roomService: RoomService) {}
 
+  // 转换数据库字段名为前端友好的 camelCase
+  private transformRoom(room: Room) {
+    return {
+      id: room.room_code, // 使用 room_code 作为前端 id
+      room_code: room.room_code,
+      location: room.location,
+      startTime: room.start_time,
+      endTime: room.end_time,
+      creatorName: room.creator_name,
+      creatorId: room.creator_id,
+      members: room.members,
+      isPermanent: room.is_permanent,
+      createdAt: room.created_at,
+    };
+  }
+
   @Get()
   async getAllRooms() {
     const rooms = await this.roomService.getAllRooms();
-    return { code: 200, msg: 'success', data: rooms };
+    return { code: 200, msg: 'success', data: rooms.map(r => this.transformRoom(r)) };
   }
 
   @Get(':id')
@@ -17,7 +33,7 @@ export class RoomController {
     if (!room) {
       return { code: 404, msg: '房间不存在', data: null };
     }
-    return { code: 200, msg: 'success', data: room };
+    return { code: 200, msg: 'success', data: this.transformRoom(room) };
   }
 
   @Get('code/:code')
@@ -26,7 +42,7 @@ export class RoomController {
     if (!room) {
       return { code: 404, msg: '房间不存在', data: null };
     }
-    return { code: 200, msg: 'success', data: room };
+    return { code: 200, msg: 'success', data: this.transformRoom(room) };
   }
 
   @Post()
@@ -42,14 +58,14 @@ export class RoomController {
       members: [{ id: body.creator_id, name: body.creator_name, joinedAt: new Date().toISOString() }],
       is_permanent: false,
     });
-    return { code: 200, msg: 'success', data: room };
+    return { code: 200, msg: 'success', data: this.transformRoom(room) };
   }
 
   @Post('join')
   async joinRoom(@Body() body: { room_id: number; member: Member }) {
     try {
       const room = await this.roomService.joinRoom(body.room_id, body.member);
-      return { code: 200, msg: 'success', data: room };
+      return { code: 200, msg: 'success', data: this.transformRoom(room) };
     } catch (error) {
       return { code: 400, msg: (error as Error).message, data: null };
     }
@@ -59,7 +75,7 @@ export class RoomController {
   async leaveRoom(@Body() body: { room_id: number; member_id: string }) {
     try {
       const room = await this.roomService.leaveRoom(body.room_id, body.member_id);
-      return { code: 200, msg: 'success', data: room };
+      return { code: 200, msg: 'success', data: this.transformRoom(room) };
     } catch (error) {
       return { code: 400, msg: (error as Error).message, data: null };
     }

@@ -4,12 +4,11 @@ import { View, Text } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Users, Plus, Clock, User, LogIn, Pencil, QrCode, Trash2, LogOut } from 'lucide-react-taro'
-import { getUserInfo, saveUserInfo, getUserId, formatTime, logout } from '@/lib/storage'
+import { Users, Plus, Clock, User, QrCode, Trash2, LogOut } from 'lucide-react-taro'
+import { formatTime } from '@/lib/storage'
 import { Network } from '@/network'
-import LinkModal from '@/components/link-modal'
+import { wxLogin, getOpenidByCode, registerUser, getLocalUser, saveLocalUser } from '@/lib/auth'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -21,422 +20,441 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
 
-interface RoomPreview {
-  id: string
+interface Room {
+  id: number
+  room_code: string
   location: string
-  startTime: string
-  creatorName: string
-  membersCount: number
-  isFull: boolean
+  start_time: string
+  end_time: string
+  creator_id: string
+  creator_name: string
+  members: { id: string; name: string }[]
+  created_at: string
+}
+
+interface UserInfo {
+  openid: string
+  nickName: string
+  phone?: string
+  avatarUrl?: string
 }
 
 export default function Index() {
-  const [allRooms, setAllRooms] = useState<(RoomPreview & { isCreator: boolean })[]>([])
-  const [userInfo, setUserInfo] = useState<{ nickname: string } | null>(null)
-  const [showNicknameInput, setShowNicknameInput] = useState(false)
-  const [nickname, setNickname] = useState('')
-  const [showQRModal, setShowQRModal] = useState(false)
-  const [currentQRRoom, setCurrentQRRoom] = useState<RoomPreview | null>(null)
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const [deleteRoomId, setDeleteRoomId] = useState<string | null>(null)
-  
-  useEffect(() => {
-    loadData()
-  }, [])
-  
-  const loadData = async () => {
-    const info = getUserInfo()
-    setUserInfo(info)
-    await loadAllRooms()
-  }
-  
-  const loadAllRooms = async () => {
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [loading, setLoading] = useState(true)
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [loginCode, setLoginCode] = useState('')
+  const [nickName, setNickName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null)
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+
+  // 加载房间列表
+  const loadRooms = async () => {
     try {
-      const res = await Network.request({ url: '/api/rooms' })
-      const rooms = res.data?.data || []
-      const uid = getUserId()
-      setAllRooms(rooms.map((r: any) => ({
-        id: r.id,
-        location: r.location,
-        startTime: r.start_time,
-        creatorName: r.creator_name || '未知',
-        membersCount: r.members?.length || 0,
-        isFull: (r.members?.length || 0) >= 4,
-        isCreator: r.creator_id === uid
-      })))
-    } catch (err) {
-      console.error('获取房间列表失败:', err)
-    }
-  }
-  
-  const handleLogin = () => {
-    setShowNicknameInput(true)
-  }
-  
-  const handleLogout = () => {
-    setShowLogoutConfirm(true)
-  }
-  
-  const confirmLogout = () => {
-    logout()
-    setUserInfo(null)
-    setShowLogoutConfirm(false)
-    Taro.showToast({ title: '已退出登录', icon: 'success' })
-  }
-  
-  const handleDeleteRoom = (roomId: string) => {
-    setDeleteRoomId(roomId)
-  }
-  
-  const confirmDeleteRoom = async () => {
-    if (deleteRoomId) {
-      const room = allRooms.find(r => r.id === deleteRoomId)
-      if (!room) return
-      
-      try {
-        console.log('删除房间:', deleteRoomId)
-        const res = await Network.request({
-          url: `/api/rooms/${deleteRoomId}`,
-          method: 'DELETE',
-          data: { creator_id: getUserId() }
-        })
-        console.log('删除结果:', res.data)
-        Taro.showToast({ title: '房间已删除', icon: 'success' })
-        await loadAllRooms()
-      } catch (err) {
-        console.error('删除房间失败:', err)
-        Taro.showToast({ title: '删除失败', icon: 'none' })
+      const res = await Network.request({
+        url: '/api/rooms',
+        method: 'GET',
+      })
+      if (res.data.code === 200) {
+        setRooms(res.data.data)
       }
+    } catch (err) {
+      console.error('加载房间失败:', err)
+    } finally {
+      setLoading(false)
     }
-    setDeleteRoomId(null)
   }
-  
-  const handleNicknameConfirm = () => {
-    const name = nickname.trim() || `牌友${Math.floor(Math.random() * 100)}`
-    const info = {
-      id: getUserId(),
-      nickname: name
+
+  // 初始化用户状态
+  useEffect(() => {
+    const localUser = getLocalUser()
+    if (localUser) {
+      setUserInfo(localUser)
+    } else {
+      // 未登录，尝试自动登录
+      handleAutoLogin()
     }
-    saveUserInfo(info)
-    setUserInfo({ nickname: info.nickname })
-    setShowNicknameInput(false)
-    setNickname('')
-    Taro.showToast({ title: `欢迎 ${info.nickname}`, icon: 'success' })
+    loadRooms()
+  }, [])
+
+  // 每次显示页面时刷新
+  useEffect(() => {
+    loadRooms()
+  }, [])
+
+  // 自动登录：获取 code 并换取 openid
+  const handleAutoLogin = async () => {
+    try {
+      const code = await wxLogin()
+      const { openid, isNewUser } = await getOpenidByCode(code)
+      
+      if (isNewUser) {
+        // 新用户，需要注册
+        setLoginCode(code)
+        setShowRegisterModal(true)
+      } else {
+        // 老用户，自动登录
+        const user: UserInfo = {
+          openid,
+          nickName: '用户',
+        }
+        saveLocalUser(user)
+        setUserInfo(user)
+      }
+    } catch (err) {
+      console.error('自动登录失败:', err)
+    }
   }
-  
-  const handleNicknameCancel = () => {
-    setShowNicknameInput(false)
-    setNickname('')
+
+  // 登录按钮点击
+  const handleLogin = async () => {
+    try {
+      const code = await wxLogin()
+      const { openid, isNewUser } = await getOpenidByCode(code)
+      
+      if (isNewUser) {
+        // 新用户，需要注册
+        setLoginCode(code)
+        setShowRegisterModal(true)
+      } else {
+        // 老用户，自动登录成功
+        const user: UserInfo = {
+          openid,
+          nickName: '用户',
+        }
+        saveLocalUser(user)
+        setUserInfo(user)
+        Taro.showToast({ title: '登录成功', icon: 'success' })
+      }
+    } catch (err) {
+      console.error('登录失败:', err)
+      Taro.showToast({ title: '登录失败', icon: 'error' })
+    }
   }
-  
-  const handleCreate = () => {
-    if (!userInfo) {
-      Taro.showToast({ title: '请先设置昵称', icon: 'none' })
+
+  // 确认注册
+  const handleRegister = async () => {
+    if (!nickName.trim()) {
+      Taro.showToast({ title: '请输入昵称', icon: 'none' })
       return
     }
-    Taro.navigateTo({ url: '/pages/create/index' })
+    if (!loginCode) {
+      Taro.showToast({ title: '登录凭证已过期，请重新登录', icon: 'none' })
+      return
+    }
+
+    try {
+      const { openid } = await getOpenidByCode(loginCode)
+      const user = await registerUser({
+        openid,
+        nick_name: nickName.trim(),
+        phone: phone.trim() || undefined,
+        avatar_url: undefined,
+      })
+      saveLocalUser(user)
+      setUserInfo(user)
+      setShowRegisterModal(false)
+      setNickName('')
+      setPhone('')
+      Taro.showToast({ title: '注册成功', icon: 'success' })
+    } catch (err) {
+      console.error('注册失败:', err)
+      Taro.showToast({ title: '注册失败', icon: 'error' })
+    }
   }
-  
-  const handleEnterRoom = (roomId: string) => {
-    Taro.navigateTo({ url: `/pages/room/index?id=${roomId}` })
+
+  // 登出
+  const handleLogout = () => {
+    Taro.removeStorageSync('userInfo')
+    setUserInfo(null)
+    setShowLogoutDialog(false)
+    Taro.showToast({ title: '已退出登录', icon: 'success' })
   }
-  
-  const handleShowQRCode = (room: RoomPreview) => {
-    setCurrentQRRoom(room)
-    setShowQRModal(true)
+
+  // 删除房间
+  const handleDeleteRoom = async (room: Room) => {
+    try {
+      const res = await Network.request({
+        url: `/api/rooms/${room.id}`,
+        method: 'DELETE',
+      })
+      if (res.data.code === 200) {
+        setRooms(rooms.filter(r => r.id !== room.id))
+        Taro.showToast({ title: '删除成功', icon: 'success' })
+      } else {
+        Taro.showToast({ title: res.data.msg || '删除失败', icon: 'error' })
+      }
+    } catch (err) {
+      console.error('删除房间失败:', err)
+      Taro.showToast({ title: '删除失败', icon: 'error' })
+    }
+    setShowDeleteDialog(false)
   }
-  
-  const refreshRooms = () => {
-    loadAllRooms()
-    Taro.showToast({ title: '已刷新', icon: 'none' })
+
+  // 确认删除
+  const confirmDelete = (room: Room) => {
+    setRoomToDelete(room)
+    setShowDeleteDialog(true)
   }
-  
+
+  // 获取用户头像首字母
+  const getInitials = (name: string) => {
+    return name ? name.charAt(0).toUpperCase() : '?'
+  }
+
   return (
-    <View className="min-h-screen bg-stone-50 flex flex-col">
-      {/* 顶部装饰 */}
-      <View className="bg-gradient-to-b from-red-800 to-red-700 pt-8 pb-10 px-4 rounded-b-3xl shadow-lg">
-        <View className="flex items-center justify-between mb-4">
-          <View className="flex items-center">
-            {userInfo ? (
-              <View className="flex items-center bg-white bg-opacity-20 rounded-full px-3 py-2">
-                <Avatar className="w-8 h-8 mr-2">
-                  <AvatarFallback className="bg-red-500 text-white text-sm">
-                    {userInfo.nickname.slice(0, 1)}
-                  </AvatarFallback>
-                </Avatar>
-                <Text className="text-white text-sm font-medium">{userInfo.nickname}</Text>
-                <View 
-                  onClick={handleLogin}
-                  className="ml-2 p-1"
-                >
-                  <Pencil size={12} color="#fff" />
-                </View>
-              </View>
-            ) : (
-              <Button 
-                size="sm"
-                className="bg-white bg-opacity-20 hover:bg-white bg-opacity-30 text-white rounded-full border-0"
-                onClick={handleLogin}
-              >
-                <LogIn size={14} color="#fff" />
-                <Text className="text-white ml-1 text-sm">登录</Text>
-              </Button>
+    <View className="min-h-screen bg-gradient-to-b from-red-950 to-red-900">
+      {/* 顶部区域 */}
+      <View className="p-4 flex justify-between items-center">
+        <View className="flex items-center gap-3">
+          <Avatar className="bg-yellow-500">
+            <AvatarFallback className="text-lg font-bold text-red-950">
+              {userInfo ? getInitials(userInfo.nickName) : '?'}
+            </AvatarFallback>
+          </Avatar>
+          <View>
+            <Text className="block text-lg font-bold text-yellow-500">
+              {userInfo ? userInfo.nickName : '未登录'}
+            </Text>
+            {userInfo?.phone && (
+              <Text className="block text-sm text-yellow-200">
+                {userInfo.phone}
+              </Text>
             )}
           </View>
-          <View className="flex items-center gap-2">
-            {userInfo && (
-              <View onClick={handleLogout} className="p-2">
-                <LogOut size={16} color="#fff" />
-              </View>
-            )}
-            <View onClick={refreshRooms} className="p-2">
-              <Text className="text-white bg-opacity-80 text-xs">刷新</Text>
-            </View>
-          </View>
         </View>
-        
-        <View className="text-center">
-          <Text className="block text-amber-400 text-lg font-medium mb-1">国风麻将</Text>
-          <Text className="block text-white text-3xl font-bold tracking-wider">约局神器</Text>
-          <Text className="block text-red-200 text-sm mt-1">轻松发起，畅快开局</Text>
-        </View>
-        
-        {/* 麻将牌装饰 */}
-        <View className="flex justify-center gap-2 mt-4">
-          {['🀄', '🀅', '🀇', '🀄'].map((tile, i) => (
-            <Text key={i} className="text-2xl opacity-80">{tile}</Text>
-          ))}
-        </View>
-      </View>
-      
-      {/* 主内容区 */}
-      <View className="flex-1 px-4 -mt-4">
-        {/* 创建房间卡片 */}
-        <Card className="shadow-md border-0 mb-4 overflow-hidden">
-          <CardContent className="p-0">
-            <View className="bg-white rounded-2xl p-5">
-              <View className="flex items-center gap-3 mb-4">
-                <View className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                  <Plus size={24} color="#B91C1C" />
-                </View>
-                <View className="flex-1">
-                  <Text className="block text-gray-800 text-lg font-semibold">发起约局</Text>
-                  <Text className="block text-gray-500 text-sm">创建房间，邀请好友</Text>
-                </View>
-              </View>
-              
-              <Button 
-                className="w-full bg-red-700 hover:bg-red-800 text-white rounded-xl h-12 text-base font-medium"
-                onClick={handleCreate}
-              >
-                <Text className="text-white">发起麻将约局</Text>
-              </Button>
-            </View>
-          </CardContent>
-        </Card>
-        
-        {/* 全部房间列表 */}
-        <View className="mb-4">
-          <View className="flex items-center justify-between mb-3">
-            <Text className="block text-gray-700 text-base font-semibold">全部约局</Text>
-            <Badge variant="secondary" className="bg-red-50 text-red-700 rounded-full px-3">
-              {allRooms.length}个房间
-            </Badge>
-          </View>
-          
-          {allRooms.length === 0 ? (
-            <Card className="shadow-sm border-0">
-              <CardContent className="p-8 text-center">
-                <Text className="block text-gray-400 text-sm">暂无约局</Text>
-                <Text className="block text-gray-300 text-xs mt-1">成为第一个发起约局的人吧</Text>
-              </CardContent>
-            </Card>
-          ) : (
-            allRooms.map(room => (
-              <Card 
-                key={room.id} 
-                className="shadow-sm border-0 mb-2"
-              >
-                <CardContent className="p-4">
-                  <View onClick={() => handleEnterRoom(room.id)}>
-                    <View className="flex items-start justify-between mb-2">
-                      <View className="flex items-center gap-2">
-                        <Text className="block text-gray-800 font-medium">{room.location}</Text>
-                        {room.isFull && (
-                          <Badge variant="destructive" className="rounded-full text-xs">
-                            已满
-                          </Badge>
-                        )}
-                        {room.isCreator && (
-                          <Badge variant="outline" className="border-amber-400 text-amber-600 rounded-full text-xs">
-                            房主
-                          </Badge>
-                        )}
-                      </View>
-                      <View className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-gray-500 border-gray-300 rounded-lg text-xs">
-                          #{room.id}
-                        </Badge>
-                      </View>
-                    </View>
-                    
-                    <View className="flex items-center gap-2 mb-2">
-                      <Clock size={12} color="#9CA3AF" />
-                      <Text className="block text-gray-500 text-sm">{formatTime(room.startTime)}</Text>
-                    </View>
-                    <View className="flex items-center gap-2 mb-2">
-                      <User size={12} color="#9CA3AF" />
-                      <Text className="block text-gray-500 text-sm">发局人: {room.creatorName}</Text>
-                    </View>
-                    <View className="flex items-center justify-between">
-                      <View className="flex items-center gap-2">
-                        <Users size={12} color="#9CA3AF" />
-                        <Text className="block text-gray-500 text-sm">
-                          {room.membersCount}/4人
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  
-                  {/* 操作按钮 */}
-                  <View className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                    {room.isCreator && (
-                      <View className="flex-shrink-0">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="border-gray-300 text-gray-600 rounded-lg h-8 px-3"
-                          onClick={(e) => {
-                            e.stopPropagation?.()
-                            handleDeleteRoom(room.id)
-                          }}
-                        >
-                          <Trash2 size={12} color="#6B7280" />
-                        </Button>
-                      </View>
-                    )}
-                    <View className="flex-1">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="w-full border-red-200 text-red-700 rounded-lg h-8"
-                        onClick={() => handleShowQRCode(room)}
-                      >
-                        <QrCode size={12} color="#B91C1C" />
-                        <Text className="text-red-700 ml-1 text-xs">邀请链接</Text>
-                      </Button>
-                    </View>
-                    <View className="flex-1">
-                      <Button 
-                        size="sm" 
-                        className="w-full bg-red-700 rounded-lg h-8"
-                        onClick={() => handleEnterRoom(room.id)}
-                      >
-                        <Text className="text-white text-xs">进入房间</Text>
-                      </Button>
-                    </View>
-                  </View>
-                </CardContent>
-              </Card>
-            ))
+        <View className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-yellow-500 text-yellow-500"
+            onClick={handleLogin}
+          >
+            <LogOut className="mr-1" size={14} color="#fbbf24" />
+            <Text>登录</Text>
+          </Button>
+          {userInfo && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-red-400 text-red-200"
+              onClick={() => setShowLogoutDialog(true)}
+            >
+              <LogOut className="mr-1" size={14} color="#fbbf24" />
+              <Text>登出</Text>
+            </Button>
           )}
         </View>
-        
-        {/* 底部说明 */}
-        <View className="text-center py-6">
-          <Text className="block text-gray-400 text-xs">
-            数据仅保存在本地 · 刷新不丢失
-          </Text>
-        </View>
       </View>
-      
-      {/* 昵称输入弹窗 */}
-      {showNicknameInput && (
-        <View className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <Text className="block text-gray-800 text-lg font-semibold text-center mb-2">
-              {userInfo ? '修改昵称' : '设置昵称'}
-            </Text>
-            <Text className="block text-gray-500 text-sm text-center mb-4">
-              给自己起个好听的昵称吧
-            </Text>
-            
-            <View className="bg-gray-50 rounded-xl px-4 py-3 mb-4">
-              <Input 
-                className="w-full text-gray-800"
-                placeholder="请输入昵称"
-                value={nickname}
-                onInput={(e: any) => setNickname(e.detail.value)}
-                maxlength={10}
-              />
-            </View>
-            
-            <View className="flex gap-3">
-              <View className="flex-1">
-                <Button 
-                  variant="outline"
-                  className="w-full border-gray-300 rounded-xl h-11"
-                  onClick={handleNicknameCancel}
-                >
-                  <Text>取消</Text>
-                </Button>
-              </View>
-              <View className="flex-1">
-                <Button 
-                  className="w-full bg-red-700 rounded-xl h-11"
-                  onClick={handleNicknameConfirm}
-                >
-                  <Text className="text-white">确定</Text>
-                </Button>
-              </View>
-            </View>
-          </View>
+
+      {/* 页面标题 */}
+      <View className="px-4 pb-4">
+        <Text className="block text-3xl font-bold text-yellow-500">
+          麻将约局
+        </Text>
+        <Text className="block text-sm text-yellow-200 mt-1">
+          轻松约牌，欢乐共享
+        </Text>
+      </View>
+
+      {/* 房间列表 */}
+      <View className="px-4 pb-20">
+        <View className="flex justify-between items-center mb-4">
+          <Text className="block text-lg font-bold text-yellow-500">
+            约局列表
+          </Text>
+          <Button
+            size="sm"
+            className="bg-yellow-500 text-red-950 hover:bg-yellow-400"
+            onClick={() => Taro.navigateTo({ url: '/pages/create/index' })}
+          >
+            <Plus className="mr-1" size={14} color="#fbbf24" />
+            <Text>发起约局</Text>
+          </Button>
         </View>
+
+        {loading ? (
+          <View className="text-center py-10">
+            <Text className="text-yellow-200">加载中...</Text>
+          </View>
+        ) : rooms.length === 0 ? (
+          <View className="text-center py-10">
+            <Text className="text-yellow-200">暂无约局，快发起一个吧</Text>
+          </View>
+        ) : (
+          rooms.map((room) => (
+            <Card key={room.id} className="mb-3 bg-red-900 bg-opacity-50 border-yellow-500 border-opacity-30">
+              <CardContent className="p-4">
+                <View className="flex justify-between items-start">
+                  <View className="flex-1">
+                    <Text className="block text-lg font-bold text-yellow-500 mb-2">
+                      {room.location}
+                    </Text>
+                    <View className="flex items-center gap-2 text-sm text-yellow-200 mb-1">
+                      <Clock size={14} color="#fbbf24" />
+                      <Text>{formatTime(room.start_time)}</Text>
+                      {room.end_time && <Text> - {formatTime(room.end_time)}</Text>}
+                    </View>
+                    <View className="flex items-center gap-2 text-sm text-yellow-200">
+                      <User size={14} color="#fbbf24" />
+                      <Text>房主: {room.creator_name}</Text>
+                    </View>
+                    <View className="flex items-center gap-2 text-sm text-yellow-200 mt-1">
+                      <Users size={14} color="#fbbf24" />
+                      <Text>
+                        {room.members?.length || 0}/4 人
+                        {room.members?.length > 0 && (
+                          <Text> · {room.members.map((m: { name: string }) => m.name).join('、')}</Text>
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-yellow-500"
+                      
+                    >
+                      <QrCode size={16} color="#fbbf24" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-400"
+                      onClick={() => confirmDelete(room)}
+                    >
+                      <Trash2 size={16} color="#fbbf24" />
+                    </Button>
+                  </View>
+                </View>
+                <View className="mt-3 flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 bg-yellow-500 text-red-950 hover:bg-yellow-400"
+                    onClick={() => Taro.navigateTo({ url: `/pages/room/index?id=${room.id}` })}
+                  >
+                    <Text>进入房间</Text>
+                  </Button>
+                </View>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </View>
+
+
+      {/* 注册弹窗 */}
+      {showRegisterModal && (
+        <AlertDialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
+          <AlertDialogContent className="bg-red-900 border-yellow-500">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-yellow-500">完善信息</AlertDialogTitle>
+              <AlertDialogDescription className="text-yellow-200">
+                请填写您的昵称完成注册
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <View className="py-4">
+              <View className="mb-4">
+                <Text className="block text-sm text-yellow-200 mb-1">昵称 *</Text>
+                <View className="bg-red-950 rounded-lg px-3 py-2">
+                  <Input
+                    className="text-yellow-500"
+                    placeholder="请输入昵称"
+                    value={nickName}
+                    onInput={(e: any) => setNickName(e.detail.value)}
+                  />
+                </View>
+              </View>
+              <View className="mb-4">
+                <Text className="block text-sm text-yellow-200 mb-1">手机号</Text>
+                <View className="bg-red-950 rounded-lg px-3 py-2">
+                  <Input
+                    className="text-yellow-500"
+                    placeholder="请输入手机号（选填）"
+                    type="number"
+                    value={phone}
+                    onInput={(e: any) => setPhone(e.detail.value)}
+                  />
+                </View>
+              </View>
+            </View>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                className="border-yellow-500 text-yellow-500"
+                onClick={() => {
+                  setShowRegisterModal(false)
+                  setNickName('')
+                  setPhone('')
+                }}
+              >
+                取消
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-yellow-500 text-red-950 hover:bg-yellow-400"
+                onClick={handleRegister}
+              >
+                确认注册
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
-      
+
+      {/* 删除确认弹窗 */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="bg-red-900 border-yellow-500">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-yellow-500">确认删除</AlertDialogTitle>
+            <AlertDialogDescription className="text-yellow-200">
+              确定要删除 {roomToDelete?.location} 吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-yellow-500 text-yellow-500"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-500"
+              onClick={() => roomToDelete && handleDeleteRoom(roomToDelete)}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* 登出确认弹窗 */}
-      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
-        <AlertDialogContent>
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent className="bg-red-900 border-yellow-500">
           <AlertDialogHeader>
-            <AlertDialogTitle>退出登录</AlertDialogTitle>
-            <AlertDialogDescription>确定要退出登录吗？退出后需要重新设置昵称。</AlertDialogDescription>
+            <AlertDialogTitle className="text-yellow-500">确认登出</AlertDialogTitle>
+            <AlertDialogDescription className="text-yellow-200">
+              确定要退出登录吗？
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowLogoutConfirm(false)}>
-              <Text>取消</Text>
+            <AlertDialogCancel
+              className="border-yellow-500 text-yellow-500"
+              onClick={() => setShowLogoutDialog(false)}
+            >
+              取消
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmLogout}>
-              <Text>确定退出</Text>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-500"
+              onClick={handleLogout}
+            >
+              确认登出
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      {/* 删除房间确认弹窗 */}
-      <AlertDialog open={!!deleteRoomId} onOpenChange={(open) => !open && setDeleteRoomId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>删除房间</AlertDialogTitle>
-            <AlertDialogDescription>确定要删除这个房间吗？删除后无法恢复。</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteRoomId(null)}>
-              <Text>取消</Text>
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteRoom}>
-              <Text>确定删除</Text>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* 邀请链接弹窗 */}
-      <LinkModal
-        show={showQRModal}
-        roomId={currentQRRoom?.id || ''}
-        roomName={currentQRRoom?.location}
-        onClose={() => setShowQRModal(false)}
-      />
     </View>
   )
 }

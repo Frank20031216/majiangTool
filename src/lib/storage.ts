@@ -4,23 +4,24 @@ import Taro from '@tarojs/taro'
 export interface Room {
   id: string
   location: string
-  startTime: string
-  endTime?: string
-  creatorId: string
+  start_time: string
+  end_time?: string
+  creator_id: string
+  creator_name: string
   members: Member[]
-  createdAt: number
+  created_at: string
 }
 
 export interface Member {
   id: string
   name: string
-  joinedAt: number
+  joined_at: number
 }
 
 export interface UserRecord {
-  roomId: string
+  room_id: string
   memberId: string
-  joinedAt: number
+  joined_at: number
 }
 
 export interface UserInfo {
@@ -49,12 +50,12 @@ export function generateId(length = 6): string {
 
 // 获取用户ID（首次访问时生成）
 export function getUserId(): string {
-  let userId = Taro.getStorageSync(STORAGE_KEYS.USER_ID)
-  if (!userId) {
-    userId = generateId(8)
-    Taro.setStorageSync(STORAGE_KEYS.USER_ID, userId)
+  let user_id = Taro.getStorageSync(STORAGE_KEYS.USER_ID)
+  if (!user_id) {
+    user_id = generateId(8)
+    Taro.setStorageSync(STORAGE_KEYS.USER_ID, user_id)
   }
-  return userId
+  return user_id
 }
 
 // 获取用户信息
@@ -80,22 +81,23 @@ export function saveRooms(rooms: Room[]): void {
 }
 
 // 创建房间
-export function createRoom(location: string, startTime: string, endTime?: string): Room {
-  const userId = getUserId()
+export function createRoom(location: string, start_time: string, end_time?: string): Room {
+  const user_id = getUserId()
   const userInfo = getUserInfo()
   
   const room: Room = {
     id: generateId(),
     location,
-    startTime,
-    endTime,
-    creatorId: userId,
+    start_time,
+    end_time,
+    creator_id: user_id,
+    creator_name: userInfo?.nickname || '房主',
     members: [{
-      id: userId,
+      id: user_id,
       name: userInfo?.nickname || '房主',
-      joinedAt: Date.now()
+      joined_at: Date.now()
     }],
-    createdAt: Date.now()
+    created_at: new Date().toISOString()
   }
   
   const rooms = getAllRooms()
@@ -103,64 +105,64 @@ export function createRoom(location: string, startTime: string, endTime?: string
   saveRooms(rooms)
   
   // 记录用户加入
-  recordUserJoin(room.id, userId)
+  recordUserJoin(room.id, user_id)
   
   return room
 }
 
 // 获取单个房间
-export function getRoom(roomId: string): Room | undefined {
+export function getRoom(room_id: string): Room | undefined {
   const rooms = getAllRooms()
-  return rooms.find(r => r.id === roomId)
+  return rooms.find(r => r.id === room_id)
 }
 
 // 加入房间
-export function joinRoom(roomId: string, memberName: string): boolean {
+export function joinRoom(room_id: string, memberName: string): boolean {
   const rooms = getAllRooms()
-  const room = rooms.find(r => r.id === roomId)
+  const room = rooms.find(r => r.id === room_id)
   
   if (!room) return false
   if (room.members.length >= 4) return false
   
-  const userId = getUserId()
+  const user_id = getUserId()
   
   // 检查是否已加入
-  if (room.members.some(m => m.id === userId)) return true
+  if (room.members.some(m => m.id === user_id)) return true
   
   room.members.push({
-    id: userId,
+    id: user_id,
     name: memberName,
-    joinedAt: Date.now()
+    joined_at: Date.now()
   })
   
   saveRooms(rooms)
-  recordUserJoin(roomId, userId)
+  recordUserJoin(room_id, user_id)
   
   return true
 }
 
 // 检查用户是否已加入某房间
-export function hasUserJoined(roomId: string): boolean {
-  const userId = getUserId()
+export function hasUserJoined(room_id: string): boolean {
+  const user_id = getUserId()
   const records = getUserRecords()
-  return records.some(r => r.roomId === roomId && r.memberId === userId)
+  return records.some(r => r.room_id === room_id && r.memberId === user_id)
 }
 
 // 获取用户已加入的房间
 export function getUserRooms(): Room[] {
-  const userId = getUserId()
+  const user_id = getUserId()
   const rooms = getAllRooms()
-  return rooms.filter(r => r.members.some(m => m.id === userId))
+  return rooms.filter(r => r.members.some(m => m.id === user_id))
 }
 
 // 记录用户加入
-function recordUserJoin(roomId: string, memberId: string): void {
+function recordUserJoin(room_id: string, memberId: string): void {
   const records = getUserRecords()
-  if (!records.some(r => r.roomId === roomId && r.memberId === memberId)) {
+  if (!records.some(r => r.room_id === room_id && r.memberId === memberId)) {
     records.push({
-      roomId,
+      room_id,
       memberId,
-      joinedAt: Date.now()
+      joined_at: Date.now()
     })
     Taro.setStorageSync(STORAGE_KEYS.USER_RECORDS, JSON.stringify(records))
   }
@@ -173,8 +175,8 @@ function getUserRecords(): UserRecord[] {
 }
 
 // 生成邀请链接（小程序页面路径）
-export function generateInviteLink(roomId: string): string {
-  return `/pages/room/index?id=${roomId}`
+export function generateInviteLink(room_id: string): string {
+  return `/pages/room/index?id=${room_id}`
 }
 
 // 格式化时间
@@ -189,20 +191,20 @@ export function formatTime(dateStr: string): string {
 }
 
 // 删除房间（房主操作）
-export function deleteRoom(roomId: string): boolean {
-  const userId = getUserId()
+export function deleteRoom(room_id: string): boolean {
+  const user_id = getUserId()
   const rooms = getAllRooms()
-  const room = rooms.find(r => r.id === roomId)
+  const room = rooms.find(r => r.id === room_id)
   
   // 只有房主才能删除
-  if (!room || room.creatorId !== userId) return false
+  if (!room || room.creator_id !== user_id) return false
   
-  const filteredRooms = rooms.filter(r => r.id !== roomId)
+  const filteredRooms = rooms.filter(r => r.id !== room_id)
   saveRooms(filteredRooms)
   
   // 清除用户的加入记录
   const records = getUserRecords()
-  const filteredRecords = records.filter(r => r.roomId !== roomId)
+  const filteredRecords = records.filter(r => r.room_id !== room_id)
   Taro.setStorageSync(STORAGE_KEYS.USER_RECORDS, JSON.stringify(filteredRecords))
   
   return true
@@ -220,9 +222,9 @@ export function isLoggedIn(): boolean {
 
 // 获取房间创建者名称
 export function getCreatorName(room: Room): string {
-  if (room.members.length > 0 && room.members[0].id === room.creatorId) {
+  if (room.members.length > 0 && room.members[0].id === room.creator_id) {
     return room.members[0].name
   }
-  const creator = room.members.find(m => m.id === room.creatorId)
+  const creator = room.members.find(m => m.id === room.creator_id)
   return creator?.name || '未知'
 }
