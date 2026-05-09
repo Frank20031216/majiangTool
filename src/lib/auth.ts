@@ -95,7 +95,7 @@ export async function getUserInfo(openid: string): Promise<UserInfo> {
   })
   
   const result = res.data
-  return result
+  return result.data
 }
 
 // 获取用户信息

@@ -56,7 +56,13 @@ export class UserService {
       throw new Error(`获取用户失败: ${error.message}`);
     }
     
-    return data;
+    return {
+  ...data,
+  openid: data.openid,
+  nickName: data.nick_name,    // 转换
+  phone: data.phone,
+  avatarUrl: data.avatar_url   // 转换
+}
   }
 
   async createUser(userData: { openid: string; nick_name: string; phone?: string; avatar_url?: string }) {
