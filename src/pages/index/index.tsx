@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Users, Plus, Clock, User, QrCode, Trash2, LogOut } from 'lucide-react-taro'
+import { Users, Plus, Clock, User, QrCode, Trash2, LogOut, RefreshCw } from 'lucide-react-taro'
 import { formatTime } from '@/lib/storage'
 import { Network } from '@/network'
 import { wxLogin, getOpenidByCode, registerUser, getLocalUser, saveLocalUser, getUserInfo } from '@/lib/auth'
@@ -269,14 +269,28 @@ export default function Index() {
           <Text className="block text-lg font-bold text-yellow-500">
             约局列表
           </Text>
-          <Button
-            size="sm"
-            className="bg-yellow-500 text-red-950 hover:bg-yellow-400"
-            onClick={() => Taro.navigateTo({ url: '/pages/create/index' })}
-          >
-            <Plus className="mr-1" size={14} color="#fbbf24" />
-            <Text>发起约局</Text>
-          </Button>
+          <View className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-yellow-500 text-yellow-500"
+              onClick={() => {
+                setLoading(true)
+                loadRooms()
+              }}
+            >
+              <RefreshCw className="mr-1" size={14} color="#fbbf24" />
+              <Text>刷新</Text>
+            </Button>
+            <Button
+              size="sm"
+              className="bg-yellow-500 text-red-950 hover:bg-yellow-400"
+              onClick={() => Taro.navigateTo({ url: '/pages/create/index' })}
+            >
+              <Plus className="mr-1" size={14} color="#fbbf24" />
+              <Text>发起约局</Text>
+            </Button>
+          </View>
         </View>
 
         {loading ? (
