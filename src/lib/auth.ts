@@ -79,6 +79,9 @@ export async function registerUser(userData: {
   })
   
   const result = res.data
+
+  console.log(userData)
+  console.log(res.data)
   if (result.code !== 200) {
     throw new Error(result.msg || '注册失败')
   }

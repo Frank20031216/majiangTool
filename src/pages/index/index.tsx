@@ -50,6 +50,7 @@ export default function Index() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+  const [openid, setOpenid] = useState('')
 
   // 加载房间列表
   const loadRooms = async () => {
@@ -90,10 +91,11 @@ export default function Index() {
     try {
       const code = await wxLogin()
       const { openid, isNewUser } = await getOpenidByCode(code)
-      
+      console.log("code: "+code+"\n"+"openid: "+openid)
       if (isNewUser) {
         // 新用户，需要注册
         setLoginCode(code)
+        setOpenid(openid)
         setShowRegisterModal(true)
       } else {
         // 老用户，自动登录
@@ -147,13 +149,15 @@ export default function Index() {
     }
 
     try {
-      const { openid } = await getOpenidByCode(loginCode)
+      
+      console.log('注册openid:'+openid)
       const user = await registerUser({
         openid,
         nick_name: nickName.trim(),
         phone: phone.trim() || undefined,
         avatar_url: undefined,
       })
+      console.log('user: '+user)
       saveLocalUser(user)
       setUserInfo(user)
       setShowRegisterModal(false)

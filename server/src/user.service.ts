@@ -22,16 +22,16 @@ export class UserService {
   }
 
   async getWxSession(code: string): Promise<{ openid: string; session_key: string }> {
-    const appId = process.env.WX_APP_ID;
-    const appSecret = process.env.WX_APP_SECRET;
+    const appId = 'wx3cbf65d65860566f';
+    const appSecret = 'd6704db3d13bc479bdf798d3ee25de61';
 
-    if (!appId || !appSecret || appId === 'wx3cbf65d65860566f') {
-      // Mock mode for development
-      return {
-        openid: 'mock_openid_' + code.slice(0, 16),
-        session_key: 'mock_session_key'
-      };
-    }
+    // if (!appId || !appSecret || appId === 'wx3cbf65d65860566f') {
+    //   // Mock mode for development
+    //   return {
+    //     openid: 'mock_openid_' + code.slice(0, 16),
+    //     session_key: 'mock_session_key'
+    //   };
+    // }
 
     const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
     
