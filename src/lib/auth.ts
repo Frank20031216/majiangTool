@@ -80,13 +80,22 @@ export async function registerUser(userData: {
   
   const result = res.data
 
-  console.log(userData)
-  console.log(res.data)
   if (result.code !== 200) {
     throw new Error(result.msg || '注册失败')
   }
   
   return result.data.user
+}
+
+
+export async function getUserInfo(openid: string): Promise<UserInfo> {
+  const res = await Network.request({
+    url: `/api/user/info?openid=${openid}`,
+    method: 'GET',
+  })
+  
+  const result = res.data.user
+  return result
 }
 
 // 获取用户信息

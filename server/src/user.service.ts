@@ -1,25 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 import axios from 'axios';
 
 @Injectable()
 export class UserService {
-  private supabase: SupabaseClient | null = null;
 
-  private getClient(): SupabaseClient | null {
-    if (!this.supabase) {
-      const url = process.env.SUPABASE_URL;
-      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      
-      if (!url || !key || url === 'placeholder') {
-        console.warn('Supabase not configured, using mock mode');
-        return null;
-      }
-      
-      this.supabase = createClient(url, key);
-    }
-    return this.supabase;
-  }
+  
+  private supabase = getSupabaseClient();
 
   async getWxSession(code: string): Promise<{ openid: string; session_key: string }> {
     const appId = 'wx3cbf65d65860566f';
@@ -54,7 +41,7 @@ export class UserService {
   }
 
   async getUserByOpenid(openid: string) {
-    const client = this.getClient();
+    const client = this.supabase;
     if (!client) {
       return null;
     }
@@ -73,7 +60,7 @@ export class UserService {
   }
 
   async createUser(userData: { openid: string; nick_name: string; phone?: string; avatar_url?: string }) {
-    const client = this.getClient();
+    const client = this.supabase;
     if (!client) {
       return {
         id: Date.now(),
@@ -102,7 +89,7 @@ export class UserService {
   }
 
   async updateUser(openid: string, userData: { nick_name?: string; phone?: string; avatar_url?: string }) {
-    const client = this.getClient();
+    const client = this.supabase;
     if (!client) {
       return { openid, ...userData };
     }

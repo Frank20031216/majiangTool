@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Users, Plus, Clock, User, QrCode, Trash2, LogOut } from 'lucide-react-taro'
 import { formatTime } from '@/lib/storage'
 import { Network } from '@/network'
-import { wxLogin, getOpenidByCode, registerUser, getLocalUser, saveLocalUser } from '@/lib/auth'
+import { wxLogin, getOpenidByCode, registerUser, getLocalUser, saveLocalUser, getUserInfo } from '@/lib/auth'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -91,7 +91,8 @@ export default function Index() {
     try {
       const code = await wxLogin()
       const { openid, isNewUser } = await getOpenidByCode(code)
-      console.log("code: "+code+"\n"+"openid: "+openid)
+      
+      
       if (isNewUser) {
         // 新用户，需要注册
         setLoginCode(code)
@@ -99,10 +100,9 @@ export default function Index() {
         setShowRegisterModal(true)
       } else {
         // 老用户，自动登录
-        const user: UserInfo = {
-          openid,
-          nickName: '用户',
-        }
+        const user = await getUserInfo(openid)
+        console.log("code: "+code+"\n"+"openid: "+openid)
+        console.log("user: "+user.nickName)
         saveLocalUser(user)
         setUserInfo(user)
       }
@@ -117,16 +117,16 @@ export default function Index() {
       const code = await wxLogin()
       const { openid, isNewUser } = await getOpenidByCode(code)
       
+      setOpenid(openid)
       if (isNewUser) {
         // 新用户，需要注册
         setLoginCode(code)
+        setOpenid(openid)
         setShowRegisterModal(true)
       } else {
         // 老用户，自动登录成功
-        const user: UserInfo = {
-          openid,
-          nickName: '用户',
-        }
+        const user = await getUserInfo(openid)
+
         saveLocalUser(user)
         setUserInfo(user)
         Taro.showToast({ title: '登录成功', icon: 'success' })
@@ -221,7 +221,7 @@ export default function Index() {
           </Avatar>
           <View>
             <Text className="block text-lg font-bold text-yellow-500">
-              {userInfo ? userInfo.nickName : '未登录'}
+                {userInfo ? userInfo.nickName : '未登录'}
             </Text>
             {userInfo?.phone && (
               <Text className="block text-sm text-yellow-200">

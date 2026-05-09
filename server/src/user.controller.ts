@@ -21,13 +21,15 @@ export class UserController {
       // 查询数据库中是否有该用户
       let user = await this.userService.getUserByOpenid(openid);
 
+
       if (user) {
-        // 用户已存在，直接返回
-        return { code: 200, msg: '登录成功', data: { user, isNewUser: false } };
-      } else {
-        // 新用户，返回 openid 让前端填写信息
-        return { code: 200, msg: '新用户，请填写信息', data: { openid, isNewUser: true } };
-      }
+      // 老用户：返回 user 对象，没有 openid 字段
+      return { code: 200, msg: '登录成功', data: { openid, isNewUser: false } };
+    } else {
+      // 新用户：返回 openid 字段
+      return { code: 200, msg: '新用户', data: { openid, isNewUser: true } };
+    }
+      
     } catch (err) {
       return { code: 500, msg: err.message, data: null };
     }
@@ -70,7 +72,7 @@ export class UserController {
       if (!user) {
         return { code: 404, msg: '用户不存在', data: null };
       }
-      return { code: 200, msg: '获取成功', data: user };
+      return { code: 200, msg: '获取成功', data: {user} };
     } catch (err) {
       return { code: 500, msg: err.message, data: null };
     }
