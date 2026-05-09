@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ArrowLeft, MapPin, Clock, Users } from 'lucide-react-taro'
-import { getUserInfo, getUserId, formatTime } from '@/lib/storage'
+import { getUserId, formatTime } from '@/lib/storage'
 import { Network } from '@/network'
 
 interface Member {
@@ -33,6 +33,23 @@ export default function RoomDetail() {
   const [showJoinConfirm, setShowJoinConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  
+  // 获取本地用户信息（从 auth.ts 的存储键 'userInfo'）
+  const getLocalUser = (): { id: string; nickname: string } | null => {
+    try {
+      const data = Taro.getStorageSync('userInfo')
+      if (data) {
+        const user = JSON.parse(data)
+        return {
+          id: user.openid || '',
+          nickname: user.nickName || ''
+        }
+      }
+    } catch (e) {
+      console.error('获取用户信息失败:', e)
+    }
+    return null
+  }
   
   useEffect(() => {
     const id = router.params.id || router.params.roomId
@@ -75,7 +92,7 @@ export default function RoomDetail() {
     setLoading(true)
     setShowJoinConfirm(false)
     
-    const userInfo = getUserInfo()
+    const userInfo = getLocalUser()
     if (!userInfo) {
       Taro.showToast({ title: '请先设置昵称', icon: 'none' })
       setLoading(false)
@@ -108,7 +125,7 @@ export default function RoomDetail() {
   }
   
   const handleLeave = async () => {
-    const userInfo = getUserInfo()
+    const userInfo = getLocalUser()
     if (!userInfo) return
     
     setLoading(true)
