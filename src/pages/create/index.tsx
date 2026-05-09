@@ -173,7 +173,7 @@ export default function CreateRoom() {
             className="w-full border-red-200 text-red-700 hover:bg-red-50 rounded-xl h-12"
             onClick={handleViewRoom}
           >
-            <Text>进入房间</Text>
+            <Text>完成</Text>
           </Button>
         </View>
       </View>
