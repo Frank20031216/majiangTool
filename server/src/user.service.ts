@@ -52,8 +52,8 @@ export class UserService {
       .eq('openid', openid)
       .single();
     
-    if (error && error.code !== 'PGRST116') {
-      throw new Error(`获取用户失败: ${error.message}`);
+      if (error) {
+      return null;
     }
     
     return {
@@ -91,7 +91,13 @@ export class UserService {
       throw new Error(`创建用户失败: ${error.message}`);
     }
 
-    return data;
+    return {
+  ...data,
+  openid: data.openid,
+  nickName: data.nick_name,    // 转换
+  phone: data.phone,
+  avatarUrl: data.avatar_url   // 转换
+}
   }
 
   async updateUser(openid: string, userData: { nick_name?: string; phone?: string; avatar_url?: string }) {
@@ -116,6 +122,12 @@ export class UserService {
       throw new Error(`更新用户失败: ${error.message}`);
     }
 
-    return data;
+    return {
+  ...data,
+  openid: data.openid,
+  nickName: data.nick_name,    // 转换
+  phone: data.phone,
+  avatarUrl: data.avatar_url   // 转换
+}
   }
 }

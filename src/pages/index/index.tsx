@@ -162,8 +162,6 @@ export default function Index() {
       saveLocalUser(user)
       setUserInfo(user)
       setShowRegisterModal(false)
-      setNickName('')
-      setPhone('')
       Taro.showToast({ title: '注册成功', icon: 'success' })
     } catch (err) {
       console.error('注册失败:', err)

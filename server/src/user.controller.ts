@@ -8,18 +8,17 @@ export class UserController {
   @Post('login')
   async login(@Body() body: { code: string }) {
     const { code } = body;
-    
+
     if (!code) {
       return { code: 400, msg: '缺少code参数', data: null };
     }
 
     try {
-      // 通过 code 获取 openid
-      console.log("开始getWxSession前");
+
       const session = await this.userService.getWxSession(code);
-      console.log("开始getWxSession后"+session);
+
       const { openid } = session;
-      
+
       // 查询数据库中是否有该用户
       let user = await this.userService.getUserByOpenid(openid);
 
