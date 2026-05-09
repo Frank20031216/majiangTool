@@ -1,16 +1,65 @@
 import { Injectable } from '@nestjs/common';
-import { createClient } from '@supabase/supabase-js';
-import { WX_APP_ID, WX_APP_SECRET } from '../app.module';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import axios from 'axios';
 
 @Injectable()
 export class UserService {
-  private supabase = createClient(
-    process.env.SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  );
+  private supabase: SupabaseClient | null = null;
+
+  private getClient(): SupabaseClient | null {
+    if (!this.supabase) {
+      const url = process.env.SUPABASE_URL;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      
+      if (!url || !key || url === 'placeholder') {
+        console.warn('Supabase not configured, using mock mode');
+        return null;
+      }
+      
+      this.supabase = createClient(url, key);
+    }
+    return this.supabase;
+  }
+
+  async getWxSession(code: string): Promise<{ openid: string; session_key: string }> {
+    const appId = process.env.WX_APP_ID;
+    const appSecret = process.env.WX_APP_SECRET;
+
+    if (!appId || !appSecret || appId === 'wx3cbf65d65860566f') {
+      // Mock mode for development
+      return {
+        openid: 'mock_openid_' + code.slice(0, 16),
+        session_key: 'mock_session_key'
+      };
+    }
+
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
+    
+    try {
+      const response = await axios.get(url);
+      const data = response.data;
+
+      if (data.errcode) {
+        throw new Error(`微信登录失败: ${data.errmsg}`);
+      }
+
+      return {
+        openid: data.openid,
+        session_key: data.session_key
+      };
+    } catch (error) {
+      console.error('获取微信session失败:', error);
+      throw new Error('获取微信session失败');
+    }
+  }
 
   async getUserByOpenid(openid: string) {
-    const { data, error } = await this.supabase
+    const client = this.getClient();
+    if (!client) {
+      return null;
+    }
+    
+    const { data, error } = await client
       .from('users')
       .select('*')
       .eq('openid', openid)
@@ -23,54 +72,57 @@ export class UserService {
     return data;
   }
 
-  async createUser(userData: { openid: string; nick_name?: string; phone?: string; avatar_url?: string }) {
-    const { data, error } = await this.supabase
+  async createUser(userData: { openid: string; nick_name: string; phone?: string; avatar_url?: string }) {
+    const client = this.getClient();
+    if (!client) {
+      return {
+        id: Date.now(),
+        ...userData,
+        created_at: new Date().toISOString(),
+      };
+    }
+
+    const { data, error } = await client
       .from('users')
-      .insert([userData])
+      .insert([{
+        openid: userData.openid,
+        nick_name: userData.nick_name,
+        phone: userData.phone || '',
+        avatar_url: userData.avatar_url || ''
+      }])
       .select()
       .single();
-    
+
     if (error) {
+      console.error('创建用户失败:', error);
       throw new Error(`创建用户失败: ${error.message}`);
     }
-    
+
     return data;
   }
 
   async updateUser(openid: string, userData: { nick_name?: string; phone?: string; avatar_url?: string }) {
-    const { data, error } = await this.supabase
+    const client = this.getClient();
+    if (!client) {
+      return { openid, ...userData };
+    }
+
+    const { data, error } = await client
       .from('users')
-      .update({ ...userData, updated_at: new Date().toISOString() })
+      .update({
+        nick_name: userData.nick_name,
+        phone: userData.phone,
+        avatar_url: userData.avatar_url
+      })
       .eq('openid', openid)
       .select()
       .single();
-    
+
     if (error) {
+      console.error('更新用户失败:', error);
       throw new Error(`更新用户失败: ${error.message}`);
     }
-    
+
     return data;
-  }
-
-  async getWxSession(code: string) {
-    if (!WX_APP_ID || !WX_APP_SECRET) {
-      // 测试模式，返回模拟 openid
-      return { openid: `test_openid_${Date.now()}`, session_key: 'test_session_key' };
-    }
-
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${WX_APP_ID}&secret=${WX_APP_SECRET}&js_code=${code}&grant_type=authorization_code`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.errcode) {
-      throw new Error(`微信登录失败: ${data.errmsg}`);
-    }
-    
-    return {
-      openid: data.openid,
-      session_key: data.session_key,
-      unionid: data.unionid,
-    };
   }
 }
