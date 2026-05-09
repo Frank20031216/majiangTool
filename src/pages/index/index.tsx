@@ -102,7 +102,7 @@ export default function Index() {
         // 老用户，自动登录
         const user = await getUserInfo(openid)
         console.log("code: "+code+"\n"+"openid: "+openid)
-        console.log("user: "+user.nickName)
+        console.log("user: "+user.phone)
         saveLocalUser(user)
         setUserInfo(user)
       }
