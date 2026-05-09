@@ -55,7 +55,7 @@ export class RoomController {
       end_time: body.end_time || null,
       creator_name: body.creator_name,
       creator_id: body.creator_id,
-      members: [],
+      members: [{ user_id: body.creator_id, nick_name: body.creator_name, phone: '', joined_at: new Date().toISOString() }],
       is_permanent: false,
     });
     return { code: 200, msg: 'success', data: this.transformRoom(room) };

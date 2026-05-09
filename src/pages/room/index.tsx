@@ -104,11 +104,10 @@ export default function RoomDetail() {
         url: '/api/rooms/join',
         method: 'POST',
         data: {
-          room_id: Number(roomId),
+          room_id: roomId,
           member: {
-            user_id: userInfo.id,
-            nick_name: userInfo.nickname,
-            joined_at: new Date().toISOString()
+            id: userInfo.id,
+            name: userInfo.nickname
           }
         }
       })
@@ -135,8 +134,8 @@ export default function RoomDetail() {
         url: '/api/rooms/leave',
         method: 'POST',
         data: {
-          room_id: Number(roomId),
-          user_id: userInfo.id
+          room_id: roomId,
+          member_id: userInfo.id
         }
       })
       Taro.showToast({ title: '已退出房间', icon: 'success' })
