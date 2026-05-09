@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, MapPin, Clock, Calendar, Check } from 'lucide-react-taro'
-import { generateInviteLink, getUserInfo } from '@/lib/storage'
+import { generateInviteLink } from '@/lib/storage'
 import { Network } from '@/network'
 
 export default function CreateRoom() {
@@ -35,6 +35,24 @@ export default function CreateRoom() {
   const [roomId, setRoomId] = useState('')
   const [inviteLink, setInviteLink] = useState('')
   const [loading, setLoading] = useState(false)
+
+
+  const getLocalUser = (): { id: string; nickname: string } | null => {
+    try {
+      const data = Taro.getStorageSync('userInfo')
+      if (data) {
+        const user = JSON.parse(data)
+        return {
+          id: user.openid || '',
+          nickname: user.nickName || ''
+        }
+      }
+    } catch (e) {
+      console.error('获取用户信息失败:', e)
+    }
+    return null
+  }
+ 
   
   const handleCreate = async () => {
     if (!location.trim()) {
@@ -60,8 +78,8 @@ export default function CreateRoom() {
           location: location.trim(),
           start_time: startDateTime,
           end_time: endDateTime,
-          creator_name: getUserInfo()?.nickname || '房主',
-          creator_id: getUserInfo()?.id || ''
+          creator_name: getLocalUser()?.nickname || '房主',
+          creator_id: getLocalUser()?.id || ''
         }
       })
       
