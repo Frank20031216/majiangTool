@@ -55,6 +55,8 @@ export async function getOpenidByCode(code: string): Promise<{ openid: string; i
   })
   
   const result = res.data
+  console.log('后端返回:', JSON.stringify(result))  // 打印看看 data 是不是 null
+
   if (result.code !== 200) {
     throw new Error(result.msg || '登录失败')
   }
