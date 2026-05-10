@@ -114,7 +114,7 @@ export default function RoomDetail() {
       Taro.showToast({ title: '加入成功', icon: 'success' })
       // 返回首页并刷新
       setTimeout(() => {
-        Taro.navigateTo({ url: '/pages/index/index' })
+        Taro.navigateBack()
       }, 1000)
     } catch (err) {
       console.error('加入房间失败:', err)
@@ -141,7 +141,7 @@ export default function RoomDetail() {
       Taro.showToast({ title: '已退出房间', icon: 'success' })
       // 返回首页并刷新
       setTimeout(() => {
-        Taro.navigateTo({ url: '/pages/index/index' })
+        Taro.navigateBack()
       }, 1000)
     } catch (err) {
       console.error('退出房间失败:', err)

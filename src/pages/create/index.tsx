@@ -110,12 +110,12 @@ export default function CreateRoom() {
   
   const handleViewRoom = () => {
     // 返回首页并刷新
-    Taro.navigateTo({ url: '/pages/index/index' })
+    Taro.navigateBack()
   }
   
   const handleBack = () => {
     // 返回首页并刷新
-    Taro.navigateTo({ url: '/pages/index/index' })
+    Taro.navigateBack()
   }
 
   // 创建成功页面
