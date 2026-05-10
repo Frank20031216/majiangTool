@@ -72,9 +72,9 @@ export class RoomController {
   }
 
   @Post('leave')
-  async leaveRoom(@Body() body: { room_id: number; user_id: string }) {
+  async leaveRoom(@Body() body: { room_id: number; member_id: string }) {
     try {
-      const room = await this.roomService.leaveRoom(body.room_id, body.user_id);
+      const room = await this.roomService.leaveRoom(body.room_id, body.member_id);
       return { code: 200, msg: 'success', data: this.transformRoom(room) };
     } catch (error) {
       return { code: 400, msg: (error as Error).message, data: null };

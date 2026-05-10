@@ -2,10 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 export interface Member {
-  user_id: string;
+  id: string;
   nick_name: string;
-  phone: string;
-  joined_at: string;
+
 }
 
 export interface Room {
@@ -70,22 +69,21 @@ export class RoomService {
   }
 
   async joinRoom(roomId: number, member: Member): Promise<Room> {
+    
+    
     const room = await this.findById(roomId);
     if (!room) {
       throw new Error('房间不存在');
     }
-
-    const existingMember = room.members?.find(m => m.user_id === member.user_id);
+    const existingMember = room.members?.find(m => m.id === member.id);
+    console.log(existingMember)
     if (existingMember) {
       throw new Error('已在房间中');
     }
-
     if (room.members && room.members.length >= 4) {
       throw new Error('房间人数已满');
     }
-
     const updatedMembers = [...(room.members || []), member];
-
     const { data, error } = await this.supabase
       .from('rooms')
       .update({ members: updatedMembers })
@@ -101,13 +99,13 @@ export class RoomService {
     return data;
   }
 
-  async leaveRoom(roomId: number, userId: string): Promise<Room> {
+  async leaveRoom(roomId: number, member_id: string): Promise<Room> {
     const room = await this.findById(roomId);
     if (!room) {
       throw new Error('房间不存在');
     }
 
-    const updatedMembers = (room.members || []).filter(m => m.user_id !== userId);
+    const updatedMembers = (room.members || []).filter(m => m.id !== member_id);
 
     const { data, error } = await this.supabase
       .from('rooms')

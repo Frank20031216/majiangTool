@@ -73,8 +73,8 @@ export default function RoomDetail() {
         setError('房间不存在或已失效')
         return
       }
-      
-      const uid = getUserId()
+      const userInfo = getLocalUser()
+      const uid  = userInfo?.id
       setRoom(data)
       setHasJoined(data.members?.some((m: Member) => m.id === uid) || false)
       setError('')
