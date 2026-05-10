@@ -338,6 +338,7 @@ export default function Index() {
                     >
                       <QrCode size={16} color="#fbbf24" />
                     </Button>
+                    {userInfo && userInfo.openid === room.creator_id && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -346,6 +347,7 @@ export default function Index() {
                     >
                       <Trash2 size={16} color="#fbbf24" />
                     </Button>
+                    )}
                   </View>
                 </View>
                 <View className="mt-3 flex gap-2">
