@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
 import { View, Text } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ArrowLeft, MapPin, Clock, Users } from 'lucide-react-taro'
 import { getUserId, formatTime } from '@/lib/storage'
 import { Network } from '@/network'
+
 
 interface Member {
   id: string
@@ -154,6 +155,39 @@ export default function RoomDetail() {
   const handleBack = () => {
     Taro.navigateBack()
   }
+
+
+
+
+
+
+  
+
+
+  useShareAppMessage(() => {
+    return {
+      title: '邀请你进入房间', // 分享卡片标题
+      path: `/pages/index/index`, // 别人点开跳转的页面
+      
+    }
+  })
+
+
+
+  const handleShare = () => {
+    // Taro 里按钮设置 open-type="share" 就会自动触发
+    // 所以这里可以写埋点/逻辑，也可以空着
+    console.log('用户点击了分享按钮')
+  }
+
+
+
+
+
+
+  
+
+  
   
   if (error) {
     return (
@@ -303,6 +337,20 @@ export default function RoomDetail() {
               <Text className="text-red-700">退出房间</Text>
             </Button>
           )}
+
+
+
+          <Button
+              className=" bg-red-700 hover:bg-red-800 text-white"
+              open-type="share" 
+            >
+              <Text className="text-white">分享</Text>
+          </Button>
+
+
+
+
+          
           
           {isFull && !hasJoined && (
             <Button className="w-full bg-gray-300 text-gray-500" disabled>
