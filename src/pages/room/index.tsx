@@ -118,7 +118,7 @@ export default function RoomDetail() {
         Taro.navigateBack()
       }, 1000)
 
-
+      
     
 
 
