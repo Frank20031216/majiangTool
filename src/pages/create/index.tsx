@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Taro from '@tarojs/taro'
-import { View, Text } from '@tarojs/components'
+import { View, Text, Picker } from '@tarojs/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -220,21 +220,31 @@ export default function CreateRoom() {
                 开始时间
               </Label>
               <View className="flex gap-3">
-                <View className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                  <Input 
-                    className="w-full bg-transparent text-gray-800"
-                    type={'date' as any}
+                {/* 开始日期选择 */}
+                <View className="flex-1">
+                  <Picker
+                    mode="date"
                     value={startDate || getDefaultDate()}
-                    onInput={(e: any) => setStartDate(e.detail.value)}
-                  />
+                    onChange={(e: any) => setStartDate(e.detail.value)}
+                  >
+                    <View className="bg-gray-50 rounded-xl px-4 py-3 flex items-center">
+                      <Calendar size={16} color="#9CA3AF" className="mr-2" />
+                      <Text className="text-gray-800 flex-1">{startDate || getDefaultDate()}</Text>
+                    </View>
+                  </Picker>
                 </View>
-                <View className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                  <Input 
-                    className="w-full bg-transparent text-gray-800"
-                    type={'time' as any}
+                {/* 开始时间选择 */}
+                <View className="flex-1">
+                  <Picker
+                    mode="time"
                     value={startTime || getDefaultTime()}
-                    onInput={(e: any) => setStartTime(e.detail.value)}
-                  />
+                    onChange={(e: any) => setStartTime(e.detail.value)}
+                  >
+                    <View className="bg-gray-50 rounded-xl px-4 py-3 flex items-center">
+                      <Clock size={16} color="#9CA3AF" className="mr-2" />
+                      <Text className="text-gray-800 flex-1">{startTime || getDefaultTime()}</Text>
+                    </View>
+                  </Picker>
                 </View>
               </View>
             </View>
@@ -247,23 +257,35 @@ export default function CreateRoom() {
                 <Text className="text-gray-400 text-xs ml-1">(选填)</Text>
               </Label>
               <View className="flex gap-3">
-                <View className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                  <Input 
-                    className="w-full bg-transparent text-gray-800"
-                    type={'date' as any}
+                {/* 结束日期选择 */}
+                <View className="flex-1">
+                  <Picker
+                    mode="date"
                     value={endDate}
-                    onInput={(e: any) => setEndDate(e.detail.value)}
-                    placeholder="选填"
-                  />
+                    onChange={(e: any) => setEndDate(e.detail.value)}
+                  >
+                    <View className="bg-gray-50 rounded-xl px-4 py-3 flex items-center">
+                      <Calendar size={16} color="#9CA3AF" className="mr-2" />
+                      <Text className={endDate ? "text-gray-800 flex-1" : "text-gray-400 flex-1"}>
+                        {endDate || '选填'}
+                      </Text>
+                    </View>
+                  </Picker>
                 </View>
-                <View className="flex-1 bg-gray-50 rounded-xl px-4 py-3">
-                  <Input 
-                    className="w-full bg-transparent text-gray-800"
-                    type={'time' as any}
+                {/* 结束时间选择 */}
+                <View className="flex-1">
+                  <Picker
+                    mode="time"
                     value={endTime}
-                    onInput={(e: any) => setEndTime(e.detail.value)}
-                    placeholder="选填"
-                  />
+                    onChange={(e: any) => setEndTime(e.detail.value)}
+                  >
+                    <View className="bg-gray-50 rounded-xl px-4 py-3 flex items-center">
+                      <Clock size={16} color="#9CA3AF" className="mr-2" />
+                      <Text className={endTime ? "text-gray-800 flex-1" : "text-gray-400 flex-1"}>
+                        {endTime || '选填'}
+                      </Text>
+                    </View>
+                  </Picker>
                 </View>
               </View>
             </View>

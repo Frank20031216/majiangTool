@@ -5,7 +5,7 @@ import { View, Text, Button } from '@tarojs/components'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ArrowLeft, MapPin, Clock, Users } from 'lucide-react-taro'
+import { ArrowLeft, MapPin, Clock, Users, Share2 } from 'lucide-react-taro'
 import { getUserId, formatTime } from '@/lib/storage'
 import { Network } from '@/network'
 
@@ -318,24 +318,30 @@ export default function RoomDetail() {
           )}
           
           {hasJoined && (
-            <Button
-              variant="outline"
-              className="w-full border-red-300 text-red-700"
-              onClick={handleLeave}
-              disabled={loading}
-            >
-              <Text className="text-red-700">退出房间</Text>
-            </Button>
+            <>
+              <View className="flex gap-3 mb-3">
+                <View className="flex-1">
+                  <Button
+                    variant="outline"
+                    className="w-full border-red-300 text-red-700"
+                    onClick={handleLeave}
+                    disabled={loading}
+                  >
+                    <Text className="text-red-700">退出房间</Text>
+                  </Button>
+                </View>
+                <View className="flex-1">
+                  <Button
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                    open-type="share"
+                  >
+                    <Share2 size={16} color="white" className="mr-1" />
+                    <Text className="text-white">分享邀请</Text>
+                  </Button>
+                </View>
+              </View>
+            </>
           )}
-
-
-
-          <Button
-              className=" bg-red-700 hover:bg-red-800 text-white"
-              open-type="share" 
-            >
-              <Text className="text-white">分享</Text>
-          </Button>
 
 
 
