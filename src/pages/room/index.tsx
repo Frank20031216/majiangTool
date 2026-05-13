@@ -117,6 +117,13 @@ export default function RoomDetail() {
       setTimeout(() => {
         Taro.navigateBack()
       }, 1000)
+
+
+    
+
+
+
+      
     } catch (err) {
       console.error('加入房间失败:', err)
       Taro.showToast({ title: '加入失败', icon: 'none' })
