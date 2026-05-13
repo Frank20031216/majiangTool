@@ -118,14 +118,8 @@ export default function RoomDetail() {
         Taro.navigateBack()
       }, 1000)
 
-       const currentCount = room?.members?.length || 0
-    console.log('当前房间人数:', currentCount)
-    if(currentCount == 4){
-        
 
-
-      
-    }
+    
 
 
 

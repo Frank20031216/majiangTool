@@ -8,12 +8,10 @@ import { RoomService } from '@/room.service';
 
 import { UserController } from '@/user.controller';
 import { UserService } from '@/user.service';
-import { SubscribeMessageController } from '@/subscribe-message.controller';
-import { SubscribeMessageService } from '@/subscribe-message.service';
 
 @Module({
   imports: [],
-  controllers: [AppController, UrlSchemeController, RoomController, UserController, SubscribeMessageController],
-  providers: [AppService, UrlSchemeService, RoomService, UserService, SubscribeMessageService],
+  controllers: [AppController, UrlSchemeController, RoomController, UserController],
+  providers: [AppService, UrlSchemeService, RoomService, UserService],
 })
 export class AppModule {}
