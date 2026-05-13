@@ -86,6 +86,32 @@ export default function Index() {
     loadRooms()
   }, [])
 
+
+
+
+const enterRoom = async (room) => {
+
+  Taro.requestSubscribeMessage({
+  tmplIds: ['RTnULCazy46IsTr9_W3D2Ey8c5fnOiJoFGMNaqwe9hs'],  
+  success(res) {
+    console.log(res);
+    // 输出示例: { errMsg: "requestSubscribeMessage:ok", "模板ID": "accept" }
+  },
+  fail(err) {
+    console.log('订阅失败', err);
+  }
+});
+
+  Taro.navigateTo({ url: `/pages/room/index?id=${room.id}` })
+}
+    
+
+
+
+
+
+  
+
   // 自动登录：获取 code 并换取 openid
   const handleAutoLogin = async () => {
     try {
@@ -207,6 +233,8 @@ export default function Index() {
   const getInitials = (name: string) => {
     return name ? name.charAt(0).toUpperCase() : '?'
   }
+
+  
 
   return (
     <View className="min-h-screen bg-gradient-to-b from-red-950 to-red-900">
@@ -333,13 +361,7 @@ export default function Index() {
                     <Button
                       size="sm"
                       className="bg-yellow-500 text-red-950 hover:bg-yellow-400 px-3"
-                      onClick={() => {
-                        Taro.showShareMenu({
-                          withShareTicket: true,
-                          menus: ['shareAppMessage', 'shareTimeline']
-                        })
-                        Taro.showToast({ title: '点击右上角分享', icon: 'none', duration: 2000 })
-                      }}
+                      
                     >
                       <QrCode size={14} color="#7c2d12" />
                       <Text className="ml-1 text-xs">分享</Text>
@@ -360,7 +382,7 @@ export default function Index() {
                   <Button
                     size="sm"
                     className="flex-1 bg-yellow-500 text-red-950 hover:bg-yellow-400"
-                    onClick={() => Taro.navigateTo({ url: `/pages/room/index?id=${room.id}` })}
+                    onClick={() => enterRoom(room)}
                   >
                     <Text>进入房间</Text>
                   </Button>
