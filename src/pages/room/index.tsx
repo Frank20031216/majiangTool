@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
-import { View, Text, Button } from '@tarojs/components'
-//import { Button } from '@/components/ui/button'
+import { View, Text } from '@tarojs/components'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -171,6 +171,16 @@ export default function RoomDetail() {
       
     }
   })
+
+
+
+  const handleShare = () => {
+    // Taro 里按钮设置 open-type="share" 就会自动触发
+    // 所以这里可以写埋点/逻辑，也可以空着
+    console.log('用户点击了分享按钮')
+  }
+
+
 
 
 

@@ -332,17 +332,11 @@ export default function Index() {
                   <View className="flex flex-col gap-2">
                     <Button
                       size="sm"
-                      className="bg-yellow-500 text-red-950 hover:bg-yellow-400 px-3"
-                      onClick={() => {
-                        Taro.showShareMenu({
-                          withShareTicket: true,
-                          menus: ['shareAppMessage', 'shareTimeline']
-                        })
-                        Taro.showToast({ title: '点击右上角分享', icon: 'none', duration: 2000 })
-                      }}
+                      variant="ghost"
+                      className="text-yellow-500"
+                      
                     >
-                      <QrCode size={14} color="#7c2d12" />
-                      <Text className="ml-1 text-xs">分享</Text>
+                      <QrCode size={16} color="#fbbf24" />
                     </Button>
                     {userInfo && userInfo.openid === room.creator_id && (
                     <Button
