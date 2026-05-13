@@ -96,7 +96,45 @@ export class RoomService {
       throw new Error(`加入房间失败: ${error.message}`);
     }
 
+    // 检查是否满员（第4人加入），发送通知给房主
+    if (updatedMembers.length === 4) {
+      console.log(`房间 ${roomId} 已满员，向房主 ${room.creator_id} 发送通知`);
+      await this.createNotification({
+        user_id: room.creator_id,
+        type: 'room_full',
+        title: '房间已满员',
+        message: `您的房间"${room.location || '麻将约局'}"已满4人，可以开始游戏了！`,
+        room_id: roomId,
+      });
+    }
+
     return data;
+  }
+
+  private async createNotification(notification: {
+    user_id: string;
+    type: string;
+    title: string;
+    message: string;
+    room_id: number;
+  }): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('notifications')
+        .insert({
+          user_id: notification.user_id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          room_id: notification.room_id,
+          is_read: false,
+        });
+      if (error) {
+        console.error('创建通知失败:', error);
+      }
+    } catch (err) {
+      console.error('创建通知异常:', err);
+    }
   }
 
   async leaveRoom(roomId: number, member_id: string): Promise<Room> {
@@ -136,5 +174,32 @@ export class RoomService {
 
   async removeMember(roomId: number, userId: string): Promise<Room> {
     return this.leaveRoom(roomId, userId);
+  }
+
+  async getNotifications(userId: string): Promise<any[]> {
+    const { data, error } = await this.supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_read', false)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error('获取通知失败:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  async markNotificationRead(id: number): Promise<void> {
+    const { error } = await this.supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', id);
+
+    if (error) {
+      console.error('标记通知已读失败:', error);
+    }
   }
 }
