@@ -51,7 +51,6 @@ export default function Index() {
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [openid, setOpenid] = useState('')
-  const [notification, setNotification] = useState<{id: number; title: string; message: string; room_id: number} | null>(null)
 
   // 加载房间列表
   const loadRooms = async () => {
@@ -70,59 +69,11 @@ export default function Index() {
     }
   }
 
-  // 获取通知
-  const loadNotifications = async (userId: string) => {
-    try {
-      const res = await Network.request({
-        url: `/api/rooms/notifications/${userId}`,
-        method: 'GET',
-      })
-      if (res.data.code === 200 && res.data.data && res.data.data.length > 0) {
-        setNotification(res.data.data[0])
-      }
-    } catch (err) {
-      console.error('获取通知失败:', err)
-    }
-  }
-
-  // 标记通知已读并跳转
-  const handleNotificationClick = async () => {
-    if (notification) {
-      try {
-        await Network.request({
-          url: `/api/rooms/notifications/${notification.id}/read`,
-          method: 'POST',
-        })
-      } catch (err) {
-        console.error('标记通知已读失败:', err)
-      }
-      setNotification(null)
-      Taro.navigateTo({ url: `/pages/room/index?id=${notification.room_id}` })
-    }
-  }
-
-  // 关闭通知
-  const dismissNotification = async () => {
-    if (notification) {
-      try {
-        await Network.request({
-          url: `/api/rooms/notifications/${notification.id}/read`,
-          method: 'POST',
-        })
-      } catch (err) {
-        console.error('标记通知已读失败:', err)
-      }
-    }
-    setNotification(null)
-  }
-
   // 初始化用户状态
   useEffect(() => {
     const localUser = getLocalUser()
     if (localUser) {
       setUserInfo(localUser)
-      setOpenid(localUser.openid)
-      loadNotifications(localUser.openid)
     } else {
       // 未登录，尝试自动登录
       handleAutoLogin()
@@ -340,26 +291,6 @@ const enterRoom = async (room) => {
         </Text>
       </View>
 
-      {/* 通知提示 */}
-      {notification && (
-        <View className="mx-4 mb-4 p-4 bg-green-800 rounded-xl border border-green-600">
-          <View className="flex justify-between items-start">
-            <View className="flex-1">
-              <Text className="block text-green-300 text-sm font-bold">{notification.title}</Text>
-              <Text className="block text-green-200 text-xs mt-1">{notification.message}</Text>
-            </View>
-            <View className="flex gap-2 ml-2">
-              <Button size="sm" className="bg-green-600 hover:bg-green-500 text-white" onClick={handleNotificationClick}>
-                <Text className="text-xs">查看</Text>
-              </Button>
-              <Button size="sm" variant="ghost" className="text-green-300" onClick={dismissNotification}>
-                <Text className="text-xs">关闭</Text>
-              </Button>
-            </View>
-          </View>
-        </View>
-      )}
-
       {/* 房间列表 */}
       <View className="px-4 pb-20">
         <View className="flex justify-between items-center mb-4">
@@ -427,7 +358,14 @@ const enterRoom = async (room) => {
                     </View>
                   </View>
                   <View className="flex flex-col gap-2">
-                    
+                    <Button
+                      size="sm"
+                      className="bg-yellow-500 text-red-950 hover:bg-yellow-400 px-3"
+                      
+                    >
+                      <QrCode size={14} color="#7c2d12" />
+                      <Text className="ml-1 text-xs">分享</Text>
+                    </Button>
                     {userInfo && userInfo.openid === room.creator_id && (
                     <Button
                       size="sm"

@@ -100,24 +100,4 @@ export class RoomController {
       return { code: 400, msg: (error as Error).message, data: null };
     }
   }
-
-  @Get('notifications/:userId')
-  async getNotifications(@Param('userId') userId: string) {
-    try {
-      const notifications = await this.roomService.getNotifications(userId);
-      return { code: 200, msg: 'success', data: notifications };
-    } catch (error) {
-      return { code: 400, msg: (error as Error).message, data: null };
-    }
-  }
-
-  @Post('notifications/:id/read')
-  async markNotificationRead(@Param('id', ParseIntPipe) id: number) {
-    try {
-      await this.roomService.markNotificationRead(id);
-      return { code: 200, msg: 'success', data: null };
-    } catch (error) {
-      return { code: 400, msg: (error as Error).message, data: null };
-    }
-  }
 }
