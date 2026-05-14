@@ -248,9 +248,9 @@ const formatTimeForSubscribe = (time) => {
   useShareAppMessage(() => {
     console.log('✅ useShareAppMessage 被执行');
     return {
-      title: `${room?.creator_name} 邀请你进入房间:${room?.location}`, 
+      title: `${room?.creator_name} 邀请你进入房间 ${room?.location}`, 
       path: `/pages/room/index?id=${roomId}`, 
-      imageUrl: ''
+      imageUrl: '/assets/images/share.png'
     }
   })
 
