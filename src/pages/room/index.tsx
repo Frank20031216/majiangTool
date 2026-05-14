@@ -122,11 +122,11 @@ export default function RoomDetail() {
       console.log('api/rooms : '+res)
     const data = res.data?.data
     setRoom(data)
-    const currentCount= room?.members?.length || 0
+    const currentCount= data?.members?.length || 0
 
     console.log('当前房间人数:', currentCount)
-    if(currentCount === 2){
-        await sendSubscribeMessage()
+    if(currentCount === BigUint64Array){
+        await sendSubscribeMessage(data)
     }
 
 
@@ -156,7 +156,7 @@ const formatTimeForSubscribe = (time) => {
 
 
 
-  const sendSubscribeMessage = async () => {
+  const sendSubscribeMessage = async (data) => {
   try {
     // 1. 获取 access_token
     const tokenRes = await Taro.request({
@@ -170,7 +170,7 @@ const formatTimeForSubscribe = (time) => {
     const accessToken = tokenRes.data.access_token
 
     // 2. 发送订阅消息
-    const memberNames = room?.members?.map(m => m.name).join('、') || '有新成员加入';
+    const memberNames = data?.members?.map(m => m.name).join('、') || '有新成员加入';
     
     const res = await Taro.request({
       url: `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${accessToken}`,
@@ -246,9 +246,10 @@ const formatTimeForSubscribe = (time) => {
 
 
   useShareAppMessage(() => {
+    console.log('✅ useShareAppMessage 被执行');
     return {
-      title: '邀请你进入房间', // 分享卡片标题
-      path: `/pages/index/index`, // 别人点开跳转的页面
+      title: '邀请你进入房间', 
+      path: `/pages/index/index`, 
       
     }
   })

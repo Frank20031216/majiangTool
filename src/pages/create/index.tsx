@@ -98,6 +98,10 @@ export default function CreateRoom() {
       setLoading(false)
     }
   }
+
+
+
+////////////////////
   
   const handleCopyLink = () => {
     Taro.setClipboardData({
@@ -107,6 +111,11 @@ export default function CreateRoom() {
       }
     })
   }
+
+
+
+///////////////////////
+
   
   const handleViewRoom = () => {
     // 返回首页并刷新
@@ -152,20 +161,15 @@ export default function CreateRoom() {
               </View>
             </View>
             
-            {/* 复制链接按钮 */}
+            {/* 分享按钮 */}
             <Button 
               className="w-full bg-red-700 hover:bg-red-800 text-white rounded-xl h-12"
               onClick={handleCopyLink}
             >
-              <Text className="text-white mr-2">复制邀请链接</Text>
+              <Text className="text-white mr-2">分享</Text>
             </Button>
           </View>
           
-          {/* 邀约链接 */}
-          <View className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-            <Text className="block text-gray-500 text-xs mb-2">邀约链接</Text>
-            <Text className="block text-gray-700 text-sm break-all">{inviteLink}</Text>
-          </View>
           
           {/* 进入房间 */}
           <Button 
