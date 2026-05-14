@@ -118,9 +118,16 @@ export default function RoomDetail() {
         Taro.navigateBack()
       }, 1000)
 
-      
-    
+    const res = await Network.request({ url: `/api/rooms/${roomId}` })
+      console.log('api/rooms : '+res)
+    const data = res.data?.data
+    setRoom(data)
+    const currentCount= room?.members?.length || 0
 
+    console.log('当前房间人数:', currentCount)
+    if(currentCount === 2){
+        await sendSubscribeMessage()
+    }
 
 
       
@@ -131,6 +138,73 @@ export default function RoomDetail() {
       setLoading(false)
     }
   }
+
+
+
+const formatTimeForSubscribe = (time) => {
+  if (!time) return "2026-01-01 00:00:00"
+  const date = new Date(time)
+  const YYYY = date.getFullYear()
+  const MM = String(date.getMonth() + 1).padStart(2, '0')
+  const DD = String(date.getDate()).padStart(2, '0')
+  const HH = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  const ss = String(date.getSeconds()).padStart(2, '0')
+  return `${YYYY}-${MM}-${DD} ${HH}:${mm}:${ss}`
+}
+
+
+
+
+  const sendSubscribeMessage = async () => {
+  try {
+    // 1. 获取 access_token
+    const tokenRes = await Taro.request({
+      url: 'https://api.weixin.qq.com/cgi-bin/token',
+      data: {
+        grant_type: 'client_credential',
+        appid: 'wx3cbf65d65860566f',
+        secret: 'd6704db3d13bc479bdf798d3ee25de61'
+      }
+    })
+    const accessToken = tokenRes.data.access_token
+
+    // 2. 发送订阅消息
+    const memberNames = room?.members?.map(m => m.name).join('、') || '有新成员加入';
+    
+    const res = await Taro.request({
+      url: `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${accessToken}`,
+      method: 'POST',
+      data: {
+        template_id: 'RTnULCazy46IsTr9_W3D2Ey8c5fnOiJoFGMNaqwe9hs',
+        touser: room?.creator_id,  // 房主的 openid
+        page: 'pages/index/index',
+        data: {
+          thing2: { value: room?.location },           // 房间地点
+          time4: { value: formatTimeForSubscribe(room?.start_time) },      // 开始时间
+          number5: { value: '4' },                // 人数
+          thing7: { value: memberNames }    // 提示
+        },
+        miniprogram_state: 'developer',
+        lang: 'zh_CN'
+      }
+    })
+  console.log('✅ 微信接口返回结果：', res.data)
+  console.log('errcode：', res.data.errcode)
+  console.log('errmsg：', res.data.errmsg)
+  } catch (err) {
+    console.error('发送订阅消息失败:', err)
+  }
+}
+
+
+
+
+
+
+
+
+  
   
   const handleLeave = async () => {
     const userInfo = getLocalUser()

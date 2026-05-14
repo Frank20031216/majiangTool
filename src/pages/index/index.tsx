@@ -358,14 +358,7 @@ const enterRoom = async (room) => {
                     </View>
                   </View>
                   <View className="flex flex-col gap-2">
-                    <Button
-                      size="sm"
-                      className="bg-yellow-500 text-red-950 hover:bg-yellow-400 px-3"
-                      
-                    >
-                      <QrCode size={14} color="#7c2d12" />
-                      <Text className="ml-1 text-xs">分享</Text>
-                    </Button>
+                    
                     {userInfo && userInfo.openid === room.creator_id && (
                     <Button
                       size="sm"
