@@ -125,7 +125,7 @@ export default function RoomDetail() {
     const currentCount= data?.members?.length || 0
 
     console.log('当前房间人数:', currentCount)
-    if(currentCount === BigUint64Array){
+    if(currentCount === 4){
         await sendSubscribeMessage(data)
     }
 
@@ -246,11 +246,12 @@ const formatTimeForSubscribe = (time) => {
 
 
   useShareAppMessage(() => {
-    console.log('✅ useShareAppMessage 被执行');
+    const userInfo = getLocalUser()
+    const name = userInfo?.nickname
     return {
-      title: `${room?.creator_name} 邀请你进入房间 ${room?.location}`, 
+      title: `${name} 邀请你进入房间 ${room?.location}`, 
       path: `/pages/room/index?id=${roomId}`, 
-  imageUrl:'https://picsum.photos/500/400.jpg'
+  imageUrl:'https://raw.githubusercontent.com/Frank20031216/majiangTool/main/src/assets/images/share.png'
     }
   })
 
