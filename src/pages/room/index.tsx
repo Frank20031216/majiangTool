@@ -250,7 +250,7 @@ const formatTimeForSubscribe = (time) => {
     return {
       title: `${room?.creator_name} 邀请你进入房间 ${room?.location}`, 
       path: `/pages/room/index?id=${roomId}`, 
-      imageUrl: '/assets/images/share.png'
+  imageUrl:'https://picsum.photos/500/400.jpg'
     }
   })
 
